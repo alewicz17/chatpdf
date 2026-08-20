@@ -43,3 +43,28 @@ export async function createDocument(
 
   return data as DocumentRow;
 }
+
+export type UpdateDocumentStatusInput = {
+  status: DocumentStatus;
+  pageCount?: number;
+};
+
+/** Aggiorna lo stato di avanzamento dell'ingestion (e il numero di pagine estratte). */
+export async function updateDocumentStatus(
+  documentId: string,
+  input: UpdateDocumentStatusInput,
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from("documents")
+    .update({
+      status: input.status,
+      ...(input.pageCount === undefined ? {} : { page_count: input.pageCount }),
+    })
+    .eq("id", documentId);
+
+  if (error) {
+    throw new Error(`Update su documents fallito: ${error.message}`);
+  }
+}
