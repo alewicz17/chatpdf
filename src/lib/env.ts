@@ -22,6 +22,11 @@ export const env = {
     ),
   supabaseServiceRoleKey: () =>
     required("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY),
+  googleApiKey: () =>
+    required(
+      "GOOGLE_GENERATIVE_AI_API_KEY",
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    ),
   pdfBucket: process.env.NEXT_PUBLIC_SUPABASE_PDF_BUCKET ?? "pdfs",
   embeddingModel: process.env.EMBEDDING_MODEL ?? "text-embedding-004",
   embeddingDimensions: Number(process.env.EMBEDDING_DIMENSIONS ?? 768),
