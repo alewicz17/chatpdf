@@ -69,7 +69,17 @@ export default function PdfDropzone() {
 
         const { id } = (await response.json()) as { id: string };
 
-        // TODO: chiamare /api/process-pdf per estrarre e vettorializzare il testo.
+        setStatus("Avvio dell'elaborazione...");
+
+        // Ingestion in background: la pagina del documento ne mostra l'avanzamento.
+        void fetch("/api/process-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ documentId: id, fileUrl: publicUrl }),
+        }).catch((processError) => {
+          console.error("Avvio di process-pdf fallito:", processError);
+        });
+
         router.push(`/document/${id}`);
       } catch (uploadError) {
         console.error("Upload del PDF fallito:", uploadError);

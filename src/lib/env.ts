@@ -28,6 +28,6 @@ export const env = {
       process.env.GOOGLE_GENERATIVE_AI_API_KEY,
     ),
   pdfBucket: process.env.NEXT_PUBLIC_SUPABASE_PDF_BUCKET ?? "pdfs",
-  embeddingModel: process.env.EMBEDDING_MODEL ?? "text-embedding-004",
+  embeddingModel: process.env.EMBEDDING_MODEL ?? "gemini-embedding-001",
   embeddingDimensions: Number(process.env.EMBEDDING_DIMENSIONS ?? 768),
 };

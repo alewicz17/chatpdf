@@ -68,3 +68,22 @@ export async function updateDocumentStatus(
     throw new Error(`Update su documents fallito: ${error.message}`);
   }
 }
+
+/** Legge un singolo documento; ritorna null se l'id non esiste. */
+export async function getDocumentById(
+  documentId: string,
+): Promise<DocumentRow | null> {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("documents")
+    .select()
+    .eq("id", documentId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Select su documents fallito: ${error.message}`);
+  }
+
+  return (data as DocumentRow | null) ?? null;
+}
