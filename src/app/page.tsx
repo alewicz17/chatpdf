@@ -2,13 +2,18 @@ import PdfDropzone from "@/components/pdf-dropzone";
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
-      <div className="text-center">
-        <h1 className="text-3xl font-semibold">ChatPDF</h1>
-        <p className="mt-2 text-gray-500">
-          Carica un PDF e fai domande sul suo contenuto.
+    <main className="flex flex-1 flex-col items-center justify-center gap-10 px-6 py-16">
+      <div className="max-w-md text-center">
+        <p className="eyebrow">Lettura assistita di PDF</p>
+        <h1 className="mt-3 font-serif text-4xl tracking-tight text-ink">
+          ChatPDF
+        </h1>
+        <p className="mt-3 font-serif text-[0.9375rem] leading-7 text-ink-soft">
+          Carica un PDF e fai domande sul suo contenuto. Ogni risposta cita la
+          pagina da cui viene, e la pagina si apre con un clic.
         </p>
       </div>
+
       <PdfDropzone />
     </main>
   );

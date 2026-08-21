@@ -102,29 +102,31 @@ export default function PdfDropzone() {
     <div className="w-full max-w-xl">
       <div
         {...getRootProps()}
-        className={`w-full border-2 border-dashed p-12 text-center rounded-xl transition-colors ${
+        className={`w-full border border-dashed bg-surface p-12 text-center transition-colors ${
           isUploading
-            ? "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400"
+            ? "cursor-not-allowed border-rule text-ink-muted"
             : isDragActive
-              ? "cursor-pointer border-blue-500 bg-blue-50 text-blue-700"
-              : "cursor-pointer border-gray-300 hover:border-gray-400"
+              ? "cursor-pointer border-marker bg-marker-soft text-ink"
+              : "cursor-pointer border-rule-strong text-ink-soft hover:border-ink"
         }`}
       >
         <input {...getInputProps()} />
         {isUploading ? (
-          <p className="text-lg font-medium">Caricamento in corso...</p>
+          <p className="text-base">Caricamento in corso</p>
         ) : isDragActive ? (
-          <p className="text-lg font-medium">Rilascia il PDF qui...</p>
+          <p className="text-base font-medium">Rilascia il PDF qui</p>
         ) : (
-          <p className="text-lg text-gray-600">
+          <p className="text-base">
             Trascina un PDF qui, o clicca per selezionarlo
           </p>
         )}
       </div>
       {status && !error && (
-        <p className="mt-4 text-center text-sm text-gray-500">{status}</p>
+        <p className="eyebrow mt-4 text-center">{status}</p>
       )}
-      {error && <p className="mt-4 text-center text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="mt-4 text-center text-sm text-alert">{error}</p>
+      )}
     </div>
   );
 }
