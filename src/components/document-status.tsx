@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import type { DocumentStatus } from "@/lib/repositories/documents";
 
@@ -13,38 +12,37 @@ type DocumentStatusResponse = {
 };
 
 const LABELS: Record<DocumentStatus, string> = {
-  pending: "In coda per l'elaborazione...",
-  processing: "Elaborazione in corso: estrazione del testo e vettorializzazione...",
-  ready: "Documento pronto",
-  error: "Elaborazione non riuscita. Riprova a caricare il PDF.",
+  pending: "In coda",
+  processing: "Indicizzazione",
+  ready: "Pronto",
+  error: "Non riuscita",
 };
 
 const STYLES: Record<DocumentStatus, string> = {
-  pending: "border-gray-200 bg-gray-50 text-gray-600",
-  processing: "border-blue-200 bg-blue-50 text-blue-700",
-  ready: "border-green-200 bg-green-50 text-green-700",
-  error: "border-red-200 bg-red-50 text-red-700",
+  pending: "border-rule text-ink-muted",
+  processing: "border-rule text-ink-soft",
+  ready: "border-marker bg-marker-soft text-ink",
+  error: "border-alert bg-alert-soft text-alert",
 };
 
 function isPending(status: DocumentStatus): boolean {
   return status === "pending" || status === "processing";
 }
 
-type DocumentStatusBannerProps = {
+type DocumentStatusBadgeProps = {
   documentId: string;
   initialStatus: DocumentStatus;
-  initialPageCount: number | null;
+  /** Notifica lo stato al workspace, che ne ricava se la chat e' utilizzabile. */
+  onStatusChange: (status: DocumentStatus) => void;
 };
 
-/** Mostra lo stato dell'ingestion, in polling finche' non e' concluso. */
-export default function DocumentStatusBanner({
+/** Stato dell'ingestion in forma compatta, in polling finche' non e' concluso. */
+export default function DocumentStatusBadge({
   documentId,
   initialStatus,
-  initialPageCount,
-}: DocumentStatusBannerProps) {
-  const router = useRouter();
+  onStatusChange,
+}: DocumentStatusBadgeProps) {
   const [status, setStatus] = useState<DocumentStatus>(initialStatus);
-  const [pageCount, setPageCount] = useState<number | null>(initialPageCount);
 
   useEffect(() => {
     if (!isPending(status)) return;
@@ -62,12 +60,7 @@ export default function DocumentStatusBanner({
         if (cancelled) return;
 
         setStatus(data.status);
-        setPageCount(data.pageCount);
-
-        // Lo stato finale cambia cio' che i Server Component possono mostrare.
-        if (!isPending(data.status)) {
-          router.refresh();
-        }
+        onStatusChange(data.status);
       } catch (error) {
         console.error("Polling dello stato del documento fallito:", error);
       }
@@ -80,24 +73,21 @@ export default function DocumentStatusBanner({
       cancelled = true;
       clearInterval(interval);
     };
-  }, [documentId, status, router]);
+  }, [documentId, status, onStatusChange]);
 
   return (
-    <div
-      className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${STYLES[status]}`}
+    <span
+      className={`inline-flex shrink-0 items-center gap-2 border px-2.5 py-1 font-mono text-[0.6875rem] uppercase tracking-wide ${STYLES[status]}`}
       role="status"
       aria-live="polite"
     >
       {isPending(status) && (
         <span
-          className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+          className="h-2.5 w-2.5 shrink-0 animate-spin rounded-full border border-current border-t-transparent"
           aria-hidden="true"
         />
       )}
-      <span>
-        {LABELS[status]}
-        {status === "ready" && pageCount !== null && ` — ${pageCount} pagine`}
-      </span>
-    </div>
+      {LABELS[status]}
+    </span>
   );
 }

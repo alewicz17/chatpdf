@@ -1,26 +1,95 @@
 @import "tailwindcss";
 
+/*
+ * Palette "carta e inchiostro": il PDF e' l'artefatto, la chat e' il margine.
+ * L'unico accento e' il giallo evidenziatore, riservato alle citazioni.
+ * Il tema e' volutamente solo chiaro: un lettore di documenti resta su carta.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  --paper: #eceef2;
+  --surface: #ffffff;
+  --surface-sunken: #f6f7f9;
+  --ink: #15171d;
+  --ink-soft: #474d5b;
+  --ink-muted: #7c8290;
+  --rule: #dde1e8;
+  --rule-strong: #c6ccd7;
+  --marker: #ffcf3d;
+  --marker-soft: #fdf3d2;
+  --quill: #2b2f6b;
+  --alert: #9c2a20;
+  --alert-soft: #fbeceb;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--surface-sunken);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-marker: var(--marker);
+  --color-marker-soft: var(--marker-soft);
+  --color-quill: var(--quill);
+  --color-alert: var(--alert);
+  --color-alert-soft: var(--alert-soft);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+}
+
+:focus-visible {
+  outline: 2px solid var(--quill);
+  outline-offset: 2px;
+}
+
+/* Etichetta di servizio: numeri di pagina, stati, occhielli di sezione. */
+.eyebrow {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* Anello temporaneo sulla pagina raggiunta da una citazione. */
+.page-flash {
+  box-shadow: 0 0 0 3px var(--marker);
+  transition: box-shadow 400ms ease-out;
+}
+
+@keyframes thinking-dot {
+  0%, 60%, 100% { opacity: 0.25; }
+  30% { opacity: 1; }
+}
+
+.thinking-dot {
+  animation: thinking-dot 1.2s ease-in-out infinite;
+}
+
+.textLayer ::selection {
+  background: var(--marker);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-flash {
+    transition: none;
+  }
+
+  .thinking-dot {
+    animation: none;
+    opacity: 0.6;
+  }
 }
