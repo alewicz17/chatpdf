@@ -53,3 +53,43 @@ export async function insertChunks(
 
   return chunks.length;
 }
+
+export type MatchedChunk = {
+  id: number;
+  content: string;
+  pageNumber: number | null;
+  similarity: number;
+};
+
+type MatchDocumentChunksRow = {
+  id: number;
+  content: string;
+  page_number: number | null;
+  similarity: number;
+};
+
+/** Similarity search sui chunk di un documento (RPC `match_document_chunks`). */
+export async function matchDocumentChunks(
+  documentId: string,
+  queryEmbedding: number[],
+  matchCount: number,
+): Promise<MatchedChunk[]> {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase.rpc("match_document_chunks", {
+    query_embedding: queryEmbedding,
+    match_document_id: documentId,
+    match_count: matchCount,
+  });
+
+  if (error) {
+    throw new Error(`RPC match_document_chunks fallita: ${error.message}`);
+  }
+
+  return ((data ?? []) as MatchDocumentChunksRow[]).map((row) => ({
+    id: row.id,
+    content: row.content,
+    pageNumber: row.page_number,
+    similarity: row.similarity,
+  }));
+}
