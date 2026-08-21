@@ -13,3 +13,25 @@ export interface EmbeddingProvider {
   /** Vettorializza una domanda dell'utente (task di ricerca). */
   embedQuery(text: string): Promise<number[]>;
 }
+
+/** Messaggio della conversazione, gia' ridotto a testo semplice. */
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type StreamAnswerInput = {
+  /** Istruzioni di sistema: contesto recuperato e regole di citazione. */
+  system: string;
+  messages: ChatMessage[];
+};
+
+export interface TextGenerator {
+  /** Identificativo del modello, utile per log e diagnostica. */
+  readonly model: string;
+  /**
+   * Genera la risposta in streaming e ritorna la `Response` da inoltrare al client
+   * nel protocollo atteso da `useChat`.
+   */
+  streamAnswer(input: StreamAnswerInput): Response;
+}

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import ChatPanel from "@/components/chat-panel";
 import DocumentStatusBanner from "@/components/document-status";
 import { getDocumentById } from "@/lib/repositories/documents";
 
@@ -30,9 +31,14 @@ export default async function DocumentPage({ params }: PageProps) {
       </section>
 
       {/* Colonna destra: chat */}
-      <section className="flex flex-col p-6">
+      <section className="flex max-h-screen flex-col p-6">
         <h2 className="text-sm font-medium text-gray-500">Chat</h2>
-        {/* TODO: useChat da @ai-sdk/react verso /api/chat */}
+        <div className="mt-4 min-h-0 flex-1">
+          <ChatPanel
+            documentId={document.id}
+            isReady={document.status === "ready"}
+          />
+        </div>
       </section>
     </main>
   );
