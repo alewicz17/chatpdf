@@ -26,6 +26,22 @@ export async function deleteChunksByDocument(documentId: string): Promise<void> 
   }
 }
 
+/** Quanti chunk sono gia' salvati: l'ingestion progressiva riparte da qui. */
+export async function countChunksByDocument(documentId: string): Promise<number> {
+  const supabase = createAdminClient();
+
+  const { count, error } = await supabase
+    .from("document_chunks")
+    .select("id", { count: "exact", head: true })
+    .eq("document_id", documentId);
+
+  if (error) {
+    throw new Error(`Count su document_chunks fallito: ${error.message}`);
+  }
+
+  return count ?? 0;
+}
+
 /** Salva i chunk vettorializzati di un documento. */
 export async function insertChunks(
   documentId: string,
@@ -44,7 +60,14 @@ export async function insertChunks(
       embedding: chunk.embedding,
     }));
 
-    const { error } = await supabase.from("document_chunks").insert(rows);
+    // `ignoreDuplicates` sul vincolo (document_id, chunk_index): un blocco gia'
+    // salvato da un tentativo precedente non viene riscritto ne' duplicato.
+    const { error } = await supabase
+      .from("document_chunks")
+      .upsert(rows, {
+        onConflict: "document_id,chunk_index",
+        ignoreDuplicates: true,
+      });
 
     if (error) {
       throw new Error(`Insert su document_chunks fallito: ${error.message}`);

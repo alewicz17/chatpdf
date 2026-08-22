@@ -14,10 +14,19 @@ export type LoadedPdf = {
   pageCount: number;
 };
 
+/** Il PDF non contiene testo estraibile: tipicamente una scansione senza OCR. */
+export class PdfWithoutTextError extends Error {
+  constructor() {
+    super("Nessun testo estratto dal PDF");
+    this.name = "PdfWithoutTextError";
+  }
+}
+
 /**
  * Estrae il testo pagina per pagina mantenendo il numero di pagina.
  * Le pagine senza testo (scansioni, immagini) restano fuori dai chunk ma
- * contano nel totale.
+ * contano nel totale; se nessuna pagina ha testo l'ingestion non ha senso e
+ * viene interrotta con `PdfWithoutTextError`.
  */
 export async function loadPages(blob: Blob): Promise<LoadedPdf> {
   const loader = new WebPDFLoader(blob, { splitPages: true });
@@ -29,6 +38,10 @@ export async function loadPages(blob: Blob): Promise<LoadedPdf> {
       content: document.pageContent.trim(),
     }))
     .filter((page) => page.content.length > 0);
+
+  if (pages.length === 0) {
+    throw new PdfWithoutTextError();
+  }
 
   return { pages, pageCount: documents.length };
 }

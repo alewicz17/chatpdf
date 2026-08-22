@@ -1,4 +1,8 @@
+import DocumentList from "@/components/document-list";
 import PdfDropzone from "@/components/pdf-dropzone";
+
+// La lista riflette gli upload appena fatti: nessuna cache.
+export const dynamic = "force-dynamic";
 
 export default function Home() {
   return (
@@ -15,6 +19,8 @@ export default function Home() {
       </div>
 
       <PdfDropzone />
+
+      <DocumentList />
     </main>
   );
 }

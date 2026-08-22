@@ -11,7 +11,9 @@ export type DocumentRow = {
   storage_path: string;
   file_url: string | null;
   page_count: number | null;
+  total_chunks: number | null;
   status: DocumentStatus;
+  error_message: string | null;
 };
 
 export type CreateDocumentInput = {
@@ -47,6 +49,10 @@ export async function createDocument(
 export type UpdateDocumentStatusInput = {
   status: DocumentStatus;
   pageCount?: number;
+  /** Totale dei chunk previsti: fissato quando l'ingestion parte. */
+  totalChunks?: number;
+  /** Motivo del fallimento mostrato all'utente; va azzerato quando si riprova. */
+  errorMessage?: string | null;
 };
 
 /** Aggiorna lo stato di avanzamento dell'ingestion (e il numero di pagine estratte). */
@@ -61,6 +67,12 @@ export async function updateDocumentStatus(
     .update({
       status: input.status,
       ...(input.pageCount === undefined ? {} : { page_count: input.pageCount }),
+      ...(input.totalChunks === undefined
+        ? {}
+        : { total_chunks: input.totalChunks }),
+      ...(input.errorMessage === undefined
+        ? {}
+        : { error_message: input.errorMessage }),
     })
     .eq("id", documentId);
 
@@ -86,4 +98,21 @@ export async function getDocumentById(
   }
 
   return (data as DocumentRow | null) ?? null;
+}
+
+/** Elenco dei documenti caricati, dal piu' recente. */
+export async function listDocuments(limit = 50): Promise<DocumentRow[]> {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("documents")
+    .select()
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Select su documents fallito: ${error.message}`);
+  }
+
+  return (data ?? []) as DocumentRow[];
 }
