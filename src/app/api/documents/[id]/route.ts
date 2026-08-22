@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { z } from "zod";
 
-import { getDocumentById } from "@/lib/repositories/documents";
+import { countChunksByDocument } from "@/lib/repositories/chunks";
+import {
+  getDocumentById,
+  updateDocumentStatus,
+} from "@/lib/repositories/documents";
 
 // Il repository usa il service role: runtime Node, non Edge.
 export const runtime = "nodejs";
@@ -26,16 +31,84 @@ export async function GET(
       );
     }
 
+    // Il conteggio serve solo mentre l'ingestion e' in corso: a documento
+    // pronto i chunk salvati coincidono col totale.
+    const processedChunks =
+      document.status === "processing" || document.status === "pending"
+        ? await countChunksByDocument(document.id)
+        : (document.total_chunks ?? 0);
+
     return NextResponse.json({
       id: document.id,
       fileName: document.file_name,
       status: document.status,
       pageCount: document.page_count,
+      errorMessage: document.error_message,
+      totalChunks: document.total_chunks,
+      processedChunks,
     });
   } catch (error) {
     console.error("GET /api/documents/[id]", error);
     return NextResponse.json(
       { error: "Impossibile leggere il documento" },
+      { status: 500 },
+    );
+  }
+}
+
+// Il client puo' segnare solo il fallimento: gli altri stati li scrive l'ingestion.
+const markErrorSchema = z.object({
+  status: z.literal("error"),
+  errorMessage: z.string().min(1).max(500).optional(),
+});
+
+/**
+ * PATCH /api/documents/[id]
+ * Marca il documento come non riuscito quando la chiamata a `/api/process-pdf`
+ * non arriva nemmeno al server (rete caduta, richiesta interrotta): senza
+ * questo il documento resterebbe "in coda" per sempre.
+ */
+export async function PATCH(
+  req: NextRequest,
+  ctx: RouteContext<"/api/documents/[id]">,
+) {
+  const { id } = await ctx.params;
+
+  const body = await req.json().catch(() => null);
+  const parsed = markErrorSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Payload non valido", issues: z.treeifyError(parsed.error) },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const document = await getDocumentById(id);
+
+    if (!document) {
+      return NextResponse.json(
+        { error: "Documento non trovato" },
+        { status: 404 },
+      );
+    }
+
+    // Un'ingestion andata a buon fine nel frattempo non va sovrascritta.
+    if (document.status === "ready") {
+      return NextResponse.json({ status: document.status });
+    }
+
+    await updateDocumentStatus(id, {
+      status: "error",
+      errorMessage: parsed.data.errorMessage ?? null,
+    });
+
+    return NextResponse.json({ status: "error" });
+  } catch (error) {
+    console.error("PATCH /api/documents/[id]", error);
+    return NextResponse.json(
+      { error: "Impossibile aggiornare il documento" },
       { status: 500 },
     );
   }

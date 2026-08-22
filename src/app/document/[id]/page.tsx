@@ -20,6 +20,7 @@ export default async function DocumentPage({ params }: PageProps) {
         fileName={document.file_name}
         fileUrl={document.file_url}
         initialStatus={document.status}
+        initialErrorMessage={document.error_message}
       />
     </main>
   );
