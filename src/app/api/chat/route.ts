@@ -29,6 +29,7 @@ const uiMessageSchema = z.object({
 const chatSchema = z.object({
   documentId: z.string().uuid(),
   messages: z.array(uiMessageSchema).min(1),
+  /** Chiave del provider di generazione fornita dall'utente (BYOK). */
   apiKey: z.string().min(1).optional(),
 });
 
@@ -76,7 +77,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const queryEmbedding = await getEmbeddingProvider(apiKey).embedQuery(question);
+    // Gli embedding restano sulla chiave di default: quella dell'utente e' del
+    // provider di generazione e non sarebbe valida per il provider di embedding.
+    const queryEmbedding = await getEmbeddingProvider().embedQuery(question);
     const chunks = await matchDocumentChunks(
       documentId,
       queryEmbedding,

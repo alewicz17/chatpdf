@@ -1,12 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 
+import ApiKeyField from "@/components/api-key-field";
 import MarkdownMessage from "@/components/markdown-message";
 
 const MAX_TEXTAREA_HEIGHT = 168;
+
+/** La chiave personale vale per tutti i documenti, non solo per quello aperto. */
+const API_KEY_STORAGE_KEY = "chatpdf:generation-api-key";
 
 const SUGGESTIONS = [
   "Riassumi il documento in cinque punti",
@@ -55,6 +66,51 @@ function readStoredMessages(documentId: string): UIMessage[] {
   }
 }
 
+/**
+ * La chiave personale vive in localStorage: e' uno store esterno a React, letto con
+ * `useSyncExternalStore` cosi' resta allineata anche tra piu' schede aperte.
+ */
+const apiKeyListeners = new Set<() => void>();
+
+function subscribeToApiKey(onStoreChange: () => void): () => void {
+  apiKeyListeners.add(onStoreChange);
+  window.addEventListener("storage", onStoreChange);
+
+  return () => {
+    apiKeyListeners.delete(onStoreChange);
+    window.removeEventListener("storage", onStoreChange);
+  };
+}
+
+function getApiKeySnapshot(): string | null {
+  try {
+    return window.localStorage.getItem(API_KEY_STORAGE_KEY);
+  } catch (error) {
+    console.error("Lettura della chiave API salvata fallita:", error);
+    return null;
+  }
+}
+
+/** Sul server non esiste localStorage: si parte sempre dalla chiave di default. */
+function getApiKeyServerSnapshot(): string | null {
+  return null;
+}
+
+function writeApiKey(apiKey: string | null): void {
+  try {
+    if (apiKey) {
+      window.localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
+    } else {
+      window.localStorage.removeItem(API_KEY_STORAGE_KEY);
+    }
+  } catch (error) {
+    console.error("Salvataggio della chiave API fallito:", error);
+  }
+
+  // L'evento `storage` non arriva alla scheda che scrive: si notifica a mano.
+  apiKeyListeners.forEach((listener) => listener());
+}
+
 /** Chat sul documento: domande dell'utente, risposte in streaming con citazioni. */
 export default function ChatPanel({
   documentId,
@@ -62,6 +118,12 @@ export default function ChatPanel({
   onCitationClick,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
+  const [isApiKeyPanelOpen, setIsApiKeyPanelOpen] = useState(false);
+  const apiKey = useSyncExternalStore(
+    subscribeToApiKey,
+    getApiKeySnapshot,
+    getApiKeyServerSnapshot,
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const hasRestoredRef = useRef(false);
@@ -70,9 +132,9 @@ export default function ChatPanel({
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: { documentId },
+        body: apiKey ? { documentId, apiKey } : { documentId },
       }),
-    [documentId],
+    [documentId, apiKey],
   );
 
   const {
@@ -154,16 +216,37 @@ export default function ChatPanel({
     <div className="flex h-full min-h-0 flex-col bg-surface">
       <header className="flex shrink-0 items-center justify-between border-b border-rule px-5 py-3">
         <span className="eyebrow">Conversazione</span>
-        {messages.length > 0 && !isBusy && (
+
+        <div className="flex items-center gap-4">
+          {messages.length > 0 && !isBusy && (
+            <button
+              type="button"
+              onClick={clearConversation}
+              className="font-mono text-[0.6875rem] uppercase tracking-wide text-ink-muted transition-colors hover:text-ink"
+            >
+              Svuota
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={clearConversation}
-            className="font-mono text-[0.6875rem] uppercase tracking-wide text-ink-muted transition-colors hover:text-ink"
+            onClick={() => setIsApiKeyPanelOpen((open) => !open)}
+            aria-expanded={isApiKeyPanelOpen}
+            aria-controls="api-key-panel"
+            className={`font-mono text-[0.6875rem] uppercase tracking-wide transition-colors hover:text-ink ${
+              apiKey ? "text-ink" : "text-ink-muted"
+            }`}
           >
-            Svuota
+            Chiave API{apiKey ? " •" : ""}
           </button>
-        )}
+        </div>
       </header>
+
+      {isApiKeyPanelOpen && (
+        <div id="api-key-panel">
+          <ApiKeyField apiKey={apiKey} onChange={writeApiKey} />
+        </div>
+      )}
 
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-6">
         {messages.length === 0 && (
@@ -228,7 +311,7 @@ export default function ChatPanel({
         {error && (
           <div className="border border-alert bg-alert-soft px-4 py-3">
             <p className="text-sm text-alert">
-              La risposta si e&apos; interrotta prima di arrivare.
+              {error.message.trim() || "La risposta si e' interrotta prima di arrivare."}
             </p>
             <button
               type="button"
