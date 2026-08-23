@@ -92,7 +92,7 @@ export default function DocumentWorkspace({
         const response = await fetch("/api/process-pdf", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ documentId, fileUrl }),
+          body: JSON.stringify({ documentId }),
         });
 
         if (cancelledRef.current) return;

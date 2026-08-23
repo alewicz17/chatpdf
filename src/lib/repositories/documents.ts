@@ -6,6 +6,7 @@ export type DocumentStatus = "pending" | "processing" | "ready" | "error";
 
 export type DocumentRow = {
   id: string;
+  user_id: string | null;
   created_at: string;
   file_name: string;
   storage_path: string;
@@ -17,9 +18,9 @@ export type DocumentRow = {
 };
 
 export type CreateDocumentInput = {
+  userId: string;
   fileName: string;
   storagePath: string;
-  fileUrl: string;
 };
 
 /** Inserisce il documento appena caricato su Storage e ritorna la riga creata. */
@@ -31,9 +32,9 @@ export async function createDocument(
   const { data, error } = await supabase
     .from("documents")
     .insert({
+      user_id: input.userId,
       file_name: input.fileName,
       storage_path: input.storagePath,
-      file_url: input.fileUrl,
       status: "pending",
     })
     .select()
@@ -81,9 +82,14 @@ export async function updateDocumentStatus(
   }
 }
 
-/** Legge un singolo documento; ritorna null se l'id non esiste. */
+/**
+ * Legge un singolo documento del proprietario indicato.
+ * Ritorna null anche quando il documento esiste ma e' di un altro utente: chi
+ * chiama non deve poter distinguere i due casi.
+ */
 export async function getDocumentById(
   documentId: string,
+  userId: string,
 ): Promise<DocumentRow | null> {
   const supabase = createAdminClient();
 
@@ -91,6 +97,7 @@ export async function getDocumentById(
     .from("documents")
     .select()
     .eq("id", documentId)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
@@ -100,13 +107,17 @@ export async function getDocumentById(
   return (data as DocumentRow | null) ?? null;
 }
 
-/** Elenco dei documenti caricati, dal piu' recente. */
-export async function listDocuments(limit = 50): Promise<DocumentRow[]> {
+/** Documenti caricati dall'utente, dal piu' recente. */
+export async function listDocuments(
+  userId: string,
+  limit = 50,
+): Promise<DocumentRow[]> {
   const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("documents")
     .select()
+    .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
 

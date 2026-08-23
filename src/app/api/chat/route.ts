@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getEmbeddingProvider, getTextGenerator } from "@/lib/ai";
+import { getCurrentUser } from "@/lib/auth/user";
 import {
   MATCH_COUNT,
   buildSystemPrompt,
@@ -39,6 +40,12 @@ const chatSchema = z.object({
  * la risposta in streaming, imponendo la citazione della fonte come [Pagina X].
  */
 export async function POST(req: Request) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+  }
+
   const body = await req.json().catch(() => null);
   const parsed = chatSchema.safeParse(body);
 
@@ -61,7 +68,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const document = await getDocumentById(documentId);
+    const document = await getDocumentById(documentId, user.id);
 
     if (!document) {
       return NextResponse.json(
@@ -82,6 +89,7 @@ export async function POST(req: Request) {
     const queryEmbedding = await getEmbeddingProvider().embedQuery(question);
     const chunks = await matchDocumentChunks(
       documentId,
+      user.id,
       queryEmbedding,
       MATCH_COUNT,
     );

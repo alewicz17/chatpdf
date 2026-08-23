@@ -1,14 +1,24 @@
 import "server-only";
 
-/** Scarica il PDF dallo Storage e lo restituisce come Blob per WebPDFLoader. */
-export async function fetchPdf(fileUrl: string): Promise<Blob> {
-  const response = await fetch(fileUrl);
+import { env } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-  if (!response.ok) {
+/**
+ * Scarica il PDF dallo Storage e lo restituisce come Blob per WebPDFLoader.
+ * Il bucket e' privato: si passa dal service role, non da un URL pubblico.
+ */
+export async function fetchPdf(storagePath: string): Promise<Blob> {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase.storage
+    .from(env.pdfBucket)
+    .download(storagePath);
+
+  if (error || !data) {
     throw new Error(
-      `Download del PDF fallito (${response.status} ${response.statusText})`,
+      `Download del PDF fallito: ${error?.message ?? "file non trovato"}`,
     );
   }
 
-  return response.blob();
+  return data;
 }

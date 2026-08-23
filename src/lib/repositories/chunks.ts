@@ -91,9 +91,14 @@ type MatchDocumentChunksRow = {
   similarity: number;
 };
 
-/** Similarity search sui chunk di un documento (RPC `match_document_chunks`). */
+/**
+ * Similarity search sui chunk di un documento (RPC `match_document_chunks`).
+ * L'utente e' un parametro della RPC: il service role bypassa la RLS, il
+ * controllo sul proprietario lo fa la funzione SQL.
+ */
 export async function matchDocumentChunks(
   documentId: string,
+  userId: string,
   queryEmbedding: number[],
   matchCount: number,
 ): Promise<MatchedChunk[]> {
@@ -102,6 +107,7 @@ export async function matchDocumentChunks(
   const { data, error } = await supabase.rpc("match_document_chunks", {
     query_embedding: queryEmbedding,
     match_document_id: documentId,
+    match_user_id: userId,
     match_count: matchCount,
   });
 

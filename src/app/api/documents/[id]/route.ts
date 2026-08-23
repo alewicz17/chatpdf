@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 
+import { getCurrentUser } from "@/lib/auth/user";
 import { countChunksByDocument } from "@/lib/repositories/chunks";
 import {
   getDocumentById,
@@ -19,10 +20,16 @@ export async function GET(
   _req: NextRequest,
   ctx: RouteContext<"/api/documents/[id]">,
 ) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+  }
+
   const { id } = await ctx.params;
 
   try {
-    const document = await getDocumentById(id);
+    const document = await getDocumentById(id, user.id);
 
     if (!document) {
       return NextResponse.json(
@@ -72,6 +79,12 @@ export async function PATCH(
   req: NextRequest,
   ctx: RouteContext<"/api/documents/[id]">,
 ) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+  }
+
   const { id } = await ctx.params;
 
   const body = await req.json().catch(() => null);
@@ -85,7 +98,7 @@ export async function PATCH(
   }
 
   try {
-    const document = await getDocumentById(id);
+    const document = await getDocumentById(id, user.id);
 
     if (!document) {
       return NextResponse.json(

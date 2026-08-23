@@ -8,9 +8,9 @@ const dateFormatter = new Intl.DateTimeFormat("it-IT", {
   timeStyle: "short",
 });
 
-/** Documenti gia' caricati, dal piu' recente, ognuno linkato alla sua pagina. */
-export default async function DocumentList() {
-  const documents = await listDocuments();
+/** Documenti dell'utente, dal piu' recente, ognuno linkato alla sua pagina. */
+export default async function DocumentList({ userId }: { userId: string }) {
+  const documents = await listDocuments(userId);
 
   if (documents.length === 0) {
     return (

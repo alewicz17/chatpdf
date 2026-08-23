@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getEmbeddingProvider } from "@/lib/ai";
+import { getCurrentUser } from "@/lib/auth/user";
 import { GENERIC_PROCESSING_ERROR } from "@/lib/document-status";
 import { chunkPages } from "@/lib/pdf/chunk-pages";
 import { embedChunks } from "@/lib/pdf/embed-chunks";
@@ -12,7 +13,10 @@ import {
   deleteChunksByDocument,
   insertChunks,
 } from "@/lib/repositories/chunks";
-import { updateDocumentStatus } from "@/lib/repositories/documents";
+import {
+  getDocumentById,
+  updateDocumentStatus,
+} from "@/lib/repositories/documents";
 
 // LangChain (WebPDFLoader + splitter) gira su runtime Node, non Edge.
 export const runtime = "nodejs";
@@ -29,7 +33,6 @@ const PDF_WITHOUT_TEXT_MESSAGE =
 
 const processPdfSchema = z.object({
   documentId: z.string().uuid(),
-  fileUrl: z.string().url(),
   apiKey: z.string().min(1).optional(),
 });
 
@@ -49,6 +52,12 @@ function userFacingMessage(error: unknown): string {
  * cosi' l'ingestion e' spezzata su piu' invocazioni ed e' ripartibile.
  */
 export async function POST(req: Request) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+  }
+
   const body = await req.json().catch(() => null);
   const parsed = processPdfSchema.safeParse(body);
 
@@ -59,13 +68,24 @@ export async function POST(req: Request) {
     );
   }
 
-  const { documentId, fileUrl, apiKey } = parsed.data;
+  const { documentId, apiKey } = parsed.data;
+
+  // Il percorso su Storage viene dal database, non dal client: e' anche il
+  // controllo di proprieta' del documento.
+  const document = await getDocumentById(documentId, user.id);
+
+  if (!document) {
+    return NextResponse.json(
+      { error: "Documento non trovato" },
+      { status: 404 },
+    );
+  }
 
   try {
     // Il PDF e' immutabile: ricostruire i chunk a ogni invocazione da' sempre
     // la stessa lista nello stesso ordine, quindi il numero di chunk gia'
     // salvati e' l'offset esatto da cui riprendere.
-    const blob = await fetchPdf(fileUrl);
+    const blob = await fetchPdf(document.storage_path);
     const { pages, pageCount } = await loadPages(blob);
     const chunks = await chunkPages(pages);
     const totalChunks = chunks.length;

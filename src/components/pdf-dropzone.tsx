@@ -63,7 +63,17 @@ export default function PdfDropzone() {
 
       try {
         const supabase = createClient();
-        const storagePath = `${crypto.randomUUID()}/${toStorageFileName(file.name)}`;
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          throw new Error("Sessione scaduta");
+        }
+
+        // Il primo segmento del path e' l'id dell'utente: e' su questo che le
+        // policy dello Storage riconoscono il proprietario del file.
+        const storagePath = `${user.id}/${crypto.randomUUID()}/${toStorageFileName(file.name)}`;
 
         const { error: uploadError } = await supabase.storage
           .from(env.pdfBucket)
@@ -76,10 +86,6 @@ export default function PdfDropzone() {
           throw new Error(uploadError.message);
         }
 
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from(env.pdfBucket).getPublicUrl(storagePath);
-
         setStatus("Registrazione del documento...");
 
         const response = await fetch("/api/documents", {
@@ -88,7 +94,6 @@ export default function PdfDropzone() {
           body: JSON.stringify({
             fileName: file.name,
             storagePath,
-            fileUrl: publicUrl,
           }),
         });
 

@@ -1,26 +1,42 @@
+import { redirect } from "next/navigation";
+
 import DocumentList from "@/components/document-list";
 import PdfDropzone from "@/components/pdf-dropzone";
+import UserMenu from "@/components/user-menu";
+import { getCurrentUser } from "@/lib/auth/user";
 
 // La lista riflette gli upload appena fatti: nessuna cache.
 export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-10 px-6 py-16">
-      <div className="max-w-md text-center">
-        <p className="eyebrow">Lettura assistita di PDF</p>
-        <h1 className="mt-3 font-serif text-4xl tracking-tight text-ink">
-          ChatPDF
-        </h1>
-        <p className="mt-3 font-serif text-[0.9375rem] leading-7 text-ink-soft">
-          Carica un PDF e fai domande sul suo contenuto. Ogni risposta cita la
-          pagina da cui viene, e la pagina si apre con un clic.
-        </p>
-      </div>
+    <>
+      <header className="flex shrink-0 items-center justify-end border-b border-rule bg-surface px-4 py-3 sm:px-6">
+        <UserMenu email={user.email ?? ""} />
+      </header>
 
-      <PdfDropzone />
+      <main className="flex flex-1 flex-col items-center justify-center gap-10 px-6 py-16">
+        <div className="max-w-md text-center">
+          <p className="eyebrow">Lettura assistita di PDF</p>
+          <h1 className="mt-3 font-serif text-4xl tracking-tight text-ink">
+            ChatPDF
+          </h1>
+          <p className="mt-3 font-serif text-[0.9375rem] leading-7 text-ink-soft">
+            Carica un PDF e fai domande sul suo contenuto. Ogni risposta cita la
+            pagina da cui viene, e la pagina si apre con un clic.
+          </p>
+        </div>
 
-      <DocumentList />
-    </main>
+        <PdfDropzone />
+
+        <DocumentList userId={user.id} />
+      </main>
+    </>
   );
 }
