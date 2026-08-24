@@ -222,7 +222,7 @@ const it: Dictionary = {
     placeholderReplace: "Sostituisci la chiave salvata",
     save: "Salva",
     remove: "Rimuovi",
-    help: "Serve per generare le risposte al posto della chiave di default. Resta salvata solo in questo browser e viene inviata al server a ogni domanda. La ricerca nel documento usa sempre la chiave del server.",
+    help: "Serve per generare le risposte al posto della chiave di default.",
   },
   viewer: {
     opening: "Apertura del documento",
