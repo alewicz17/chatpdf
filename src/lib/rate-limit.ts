@@ -2,6 +2,8 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 
+import { format } from "@/lib/i18n/config";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type RateLimitRule = {
@@ -82,18 +84,29 @@ export async function consumeRateLimit(
 }
 
 /** Formatta l'attesa residua in un'indicazione leggibile. */
-function formatRetryAfter(seconds: number): string {
-  if (seconds < 60) return `${seconds} second${seconds === 1 ? "o" : "i"}`;
+function formatRetryAfter(seconds: number, t: Dictionary): string {
+  if (seconds < 60) {
+    return format(seconds === 1 ? t.api.second : t.api.seconds, {
+      count: seconds,
+    });
+  }
 
   const minutes = Math.ceil(seconds / 60);
-  return `${minutes} minut${minutes === 1 ? "o" : "i"}`;
+  return format(minutes === 1 ? t.api.minute : t.api.minutes, {
+    count: minutes,
+  });
 }
 
 /** Risposta 429 con `Retry-After`, coerente per tutte le route. */
-export function rateLimitResponse(result: RateLimitResult): NextResponse {
+export function rateLimitResponse(
+  result: RateLimitResult,
+  t: Dictionary,
+): NextResponse {
   return NextResponse.json(
     {
-      error: `Troppe richieste: riprova tra ${formatRetryAfter(result.retryAfter)}.`,
+      error: format(t.api.rateLimited, {
+        wait: formatRetryAfter(result.retryAfter, t),
+      }),
       retryAfter: result.retryAfter,
     },
     {

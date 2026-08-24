@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/user";
+import { getTranslations } from "@/lib/i18n/server";
 import { countChunksByDocument } from "@/lib/repositories/chunks";
 import {
   getDocumentById,
@@ -20,6 +21,7 @@ export async function GET(
   _req: NextRequest,
   ctx: RouteContext<"/api/documents/[id]">,
 ) {
+  const { t } = await getTranslations();
   const user = await getCurrentUser();
 
   if (!user) {
@@ -33,7 +35,7 @@ export async function GET(
 
     if (!document) {
       return NextResponse.json(
-        { error: "Documento non trovato" },
+        { error: t.api.documentNotFound },
         { status: 404 },
       );
     }
@@ -57,7 +59,7 @@ export async function GET(
   } catch (error) {
     console.error("GET /api/documents/[id]", error);
     return NextResponse.json(
-      { error: "Impossibile leggere il documento" },
+      { error: t.api.readDocumentFailed },
       { status: 500 },
     );
   }
@@ -79,6 +81,7 @@ export async function PATCH(
   req: NextRequest,
   ctx: RouteContext<"/api/documents/[id]">,
 ) {
+  const { t } = await getTranslations();
   const user = await getCurrentUser();
 
   if (!user) {
@@ -92,7 +95,7 @@ export async function PATCH(
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Payload non valido", issues: z.treeifyError(parsed.error) },
+      { error: t.api.invalidPayload, issues: z.treeifyError(parsed.error) },
       { status: 400 },
     );
   }
@@ -102,7 +105,7 @@ export async function PATCH(
 
     if (!document) {
       return NextResponse.json(
-        { error: "Documento non trovato" },
+        { error: t.api.documentNotFound },
         { status: 404 },
       );
     }
@@ -121,7 +124,7 @@ export async function PATCH(
   } catch (error) {
     console.error("PATCH /api/documents/[id]", error);
     return NextResponse.json(
-      { error: "Impossibile aggiornare il documento" },
+      { error: t.api.updateDocumentFailed },
       { status: 500 },
     );
   }

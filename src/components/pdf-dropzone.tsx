@@ -4,6 +4,9 @@ import { useCallback, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import { useRouter } from "next/navigation";
 
+import { format } from "@/lib/i18n/config";
+import { useTranslations } from "@/lib/i18n/context";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { createClient } from "@/lib/supabase/client";
 import { env } from "@/lib/env";
 
@@ -17,40 +20,44 @@ function toStorageFileName(fileName: string): string {
     .replace(/[^a-z0-9._-]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-  return normalized.length > 0 ? normalized : "documento.pdf";
+  return normalized.length > 0 ? normalized : "document.pdf";
 }
 
 /** Traduce il motivo di scarto di react-dropzone nel messaggio mostrato. */
-function rejectionMessage(rejections: FileRejection[]): string {
+function rejectionMessage(
+  rejections: FileRejection[],
+  t: Dictionary,
+): string {
   if (rejections.length > 1) {
-    return "Carica un solo PDF alla volta.";
+    return t.dropzone.oneFileOnly;
   }
 
   const codes = rejections[0]?.errors.map((error) => error.code) ?? [];
 
   if (codes.includes("file-too-large")) {
-    return `Il file supera ${MAX_FILE_SIZE_MB} MB. Carica un PDF piu' leggero.`;
+    return format(t.dropzone.tooLarge, { size: MAX_FILE_SIZE_MB });
   }
   if (codes.includes("file-invalid-type")) {
-    return "Sono ammessi solo file PDF.";
+    return t.dropzone.invalidType;
   }
   if (codes.includes("too-many-files")) {
-    return "Carica un solo PDF alla volta.";
+    return t.dropzone.oneFileOnly;
   }
 
-  return "File non valido. Carica un PDF di massimo " + MAX_FILE_SIZE_MB + " MB.";
+  return format(t.dropzone.invalidFile, { size: MAX_FILE_SIZE_MB });
 }
 
 export default function PdfDropzone() {
   const router = useRouter();
+  const { t } = useTranslations();
   const [isUploading, setIsUploading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const onDropRejected = useCallback((rejections: FileRejection[]) => {
     setStatus(null);
-    setError(rejectionMessage(rejections));
-  }, []);
+    setError(rejectionMessage(rejections, t));
+  }, [t]);
 
   const onDropAccepted = useCallback(
     async (acceptedFiles: File[]) => {
@@ -59,7 +66,7 @@ export default function PdfDropzone() {
 
       setIsUploading(true);
       setError(null);
-      setStatus(`Caricamento di ${file.name} in corso...`);
+      setStatus(format(t.dropzone.uploadingFile, { name: file.name }));
 
       try {
         const supabase = createClient();
@@ -68,7 +75,7 @@ export default function PdfDropzone() {
         } = await supabase.auth.getUser();
 
         if (!user) {
-          throw new Error("Sessione scaduta");
+          throw new Error(t.dropzone.sessionExpired);
         }
 
         // Il primo segmento del path e' l'id dell'utente: e' su questo che le
@@ -86,7 +93,7 @@ export default function PdfDropzone() {
           throw new Error(uploadError.message);
         }
 
-        setStatus("Registrazione del documento...");
+        setStatus(t.dropzone.registering);
 
         const response = await fetch("/api/documents", {
           method: "POST",
@@ -98,7 +105,7 @@ export default function PdfDropzone() {
         });
 
         if (!response.ok) {
-          throw new Error("Creazione del documento fallita");
+          throw new Error(t.dropzone.createFailed);
         }
 
         const { id } = (await response.json()) as { id: string };
@@ -109,11 +116,11 @@ export default function PdfDropzone() {
       } catch (uploadError) {
         console.error("Upload del PDF fallito:", uploadError);
         setStatus(null);
-        setError("Caricamento non riuscito. Riprova.");
+        setError(t.dropzone.uploadFailed);
         setIsUploading(false);
       }
     },
-    [router],
+    [router, t],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -146,17 +153,15 @@ export default function PdfDropzone() {
               className="h-3 w-3 shrink-0 animate-spin rounded-full border border-current border-t-transparent"
               aria-hidden="true"
             />
-            Caricamento in corso
+            {t.dropzone.uploading}
           </p>
         ) : isDragActive ? (
-          <p className="text-base font-medium">Rilascia il PDF qui</p>
+          <p className="text-base font-medium">{t.dropzone.dragActive}</p>
         ) : (
           <>
-            <p className="text-base">
-              Trascina un PDF qui, o clicca per selezionarlo
-            </p>
+            <p className="text-base">{t.dropzone.idle}</p>
             <p className="eyebrow mt-2">
-              Solo PDF, massimo {MAX_FILE_SIZE_MB} MB
+              {format(t.dropzone.hint, { size: MAX_FILE_SIZE_MB })}
             </p>
           </>
         )}

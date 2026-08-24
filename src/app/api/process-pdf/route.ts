@@ -3,7 +3,8 @@ import { z } from "zod";
 
 import { getEmbeddingProvider } from "@/lib/ai";
 import { getCurrentUser } from "@/lib/auth/user";
-import { GENERIC_PROCESSING_ERROR } from "@/lib/document-status";
+import { getTranslations } from "@/lib/i18n/server";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { chunkPages } from "@/lib/pdf/chunk-pages";
 import { embedChunks } from "@/lib/pdf/embed-chunks";
 import { fetchPdf } from "@/lib/pdf/fetch-pdf";
@@ -32,21 +33,17 @@ export const maxDuration = 60;
 // `done`, cosi' anche un PDF lungo si indicizza senza andare in timeout.
 const CHUNKS_PER_INVOCATION = 128;
 
-const PDF_WITHOUT_TEXT_MESSAGE =
-  "Questo PDF non contiene testo selezionabile: sembra una scansione. " +
-  "Serve una versione con OCR per poterci chattare sopra.";
-
 const processPdfSchema = z.object({
   documentId: z.string().uuid(),
   apiKey: z.string().min(1).optional(),
 });
 
 /** Traduce l'errore tecnico nel messaggio mostrato all'utente. */
-function userFacingMessage(error: unknown): string {
+function userFacingMessage(error: unknown, t: Dictionary): string {
   if (error instanceof PdfWithoutTextError) {
-    return PDF_WITHOUT_TEXT_MESSAGE;
+    return t.api.pdfWithoutText;
   }
-  return GENERIC_PROCESSING_ERROR;
+  return t.document.processingFailed;
 }
 
 /**
@@ -57,6 +54,7 @@ function userFacingMessage(error: unknown): string {
  * cosi' l'ingestion e' spezzata su piu' invocazioni ed e' ripartibile.
  */
 export async function POST(req: Request) {
+  const { t } = await getTranslations();
   const user = await getCurrentUser();
 
   if (!user) {
@@ -70,7 +68,7 @@ export async function POST(req: Request) {
   const rateLimit = await consumeRateLimit(user.id, RATE_LIMITS.processPdf);
 
   if (!rateLimit.allowed) {
-    return rateLimitResponse(rateLimit);
+    return rateLimitResponse(rateLimit, t);
   }
 
   const body = await req.json().catch(() => null);
@@ -78,7 +76,7 @@ export async function POST(req: Request) {
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Payload non valido", issues: z.treeifyError(parsed.error) },
+      { error: t.api.invalidPayload, issues: z.treeifyError(parsed.error) },
       { status: 400 },
     );
   }
@@ -91,7 +89,7 @@ export async function POST(req: Request) {
 
   if (!document) {
     return NextResponse.json(
-      { error: "Documento non trovato" },
+      { error: t.api.documentNotFound },
       { status: 404 },
     );
   }
@@ -148,7 +146,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("POST /api/process-pdf", error);
 
-    const message = userFacingMessage(error);
+    const message = userFacingMessage(error, t);
 
     // Lo stato di errore e' quello che la UI mostra: non deve mascherare l'originale.
     await updateDocumentStatus(documentId, {

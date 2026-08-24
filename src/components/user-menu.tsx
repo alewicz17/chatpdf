@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { useTranslations } from "@/lib/i18n/context";
 import { createClient } from "@/lib/supabase/client";
 
 /** Email dell'utente collegato e uscita dalla sessione. */
 export default function UserMenu({ email }: { email: string }) {
   const router = useRouter();
+  const { t } = useTranslations();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   async function handleSignOut() {
@@ -31,7 +33,7 @@ export default function UserMenu({ email }: { email: string }) {
         disabled={isSigningOut}
         className="shrink-0 border border-rule px-2.5 py-1 font-mono text-[0.6875rem] uppercase tracking-wide text-ink-muted transition-colors hover:text-ink disabled:opacity-50"
       >
-        Esci
+        {t.nav.signOut}
       </button>
     </div>
   );

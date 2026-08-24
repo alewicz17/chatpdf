@@ -5,30 +5,31 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 
 import ChatPanel from "@/components/chat-panel";
+import LocaleSwitcher from "@/components/locale-switcher";
 import DocumentStatusBadge from "@/components/document-status";
-import {
-  GENERIC_PROCESSING_ERROR,
-  isDocumentPending,
-} from "@/lib/document-status";
+import { isDocumentPending } from "@/lib/document-status";
+import { format } from "@/lib/i18n/config";
+import { useTranslations } from "@/lib/i18n/context";
 import type { DocumentStatus } from "@/lib/repositories/documents";
 
 // react-pdf tocca window e i canvas: niente prerendering sul server.
+// Il segnaposto e' senza testo: il modulo si carica fuori dal LocaleProvider.
 const PdfViewer = dynamic(() => import("@/components/pdf-viewer"), {
   ssr: false,
   loading: () => (
     <div className="grid h-full place-items-center bg-sunken">
-      <p className="eyebrow">Apertura del documento</p>
+      <span
+        className="h-4 w-4 animate-spin rounded-full border border-ink-muted border-t-transparent"
+        aria-hidden="true"
+      />
     </div>
   ),
 });
 
-const MISSING_FILE_ERROR =
-  "Il file non e' piu' raggiungibile su Storage: carica di nuovo il PDF.";
-
 /** Quota di ingestion esaurita (429): condizione temporanea, non un fallimento. */
 class RateLimitedError extends Error {}
 
-type Pane = "documento" | "chat";
+type Pane = "document" | "chat";
 
 /** Progresso dell'ingestion letto dallo stato del documento. */
 type DocumentStatusResponse = {
@@ -60,18 +61,19 @@ export default function DocumentWorkspace({
   initialStatus,
   initialErrorMessage,
 }: DocumentWorkspaceProps) {
+  const { t } = useTranslations();
   const [status, setStatus] = useState<DocumentStatus>(() =>
     initialStatus === "pending" && !fileUrl ? "error" : initialStatus,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(() =>
     initialStatus === "pending" && !fileUrl
-      ? MISSING_FILE_ERROR
+      ? t.document.missingFile
       : initialErrorMessage,
   );
   const [processedChunks, setProcessedChunks] = useState(0);
   const [totalChunks, setTotalChunks] = useState<number | null>(null);
   const [targetPage, setTargetPage] = useState<number | null>(null);
-  const [activePane, setActivePane] = useState<Pane>("documento");
+  const [activePane, setActivePane] = useState<Pane>("document");
 
   // Evita driver concorrenti (piu' effetti / il retry) sullo stesso documento.
   const isDrivingRef = useRef(false);
@@ -104,7 +106,7 @@ export default function DocumentWorkspace({
           const payload = (await response.json().catch(() => null)) as {
             error?: string;
           } | null;
-          const message = payload?.error ?? GENERIC_PROCESSING_ERROR;
+          const message = payload?.error ?? t.document.processingFailed;
 
           throw response.status === 429
             ? new RateLimitedError(message)
@@ -130,7 +132,7 @@ export default function DocumentWorkspace({
       const message =
         error instanceof Error && error.message
           ? error.message
-          : GENERIC_PROCESSING_ERROR;
+          : t.document.processingFailed;
 
       setStatus("error");
       setErrorMessage(message);
@@ -152,7 +154,7 @@ export default function DocumentWorkspace({
     } finally {
       isDrivingRef.current = false;
     }
-  }, [documentId, fileUrl]);
+  }, [documentId, fileUrl, t]);
 
   // Se il documento e' ancora in lavorazione, questa pagina ne pilota
   // l'ingestion. Prima legge il progresso salvato (per non mostrare la barra a
@@ -193,7 +195,7 @@ export default function DocumentWorkspace({
 
   const handleCitationClick = useCallback((page: number) => {
     setTargetPage(page);
-    setActivePane("documento");
+    setActivePane("document");
   }, []);
 
   const handleTargetReached = useCallback(() => setTargetPage(null), []);
@@ -205,7 +207,7 @@ export default function DocumentWorkspace({
           href="/"
           className="font-serif text-lg leading-none tracking-tight text-ink"
         >
-          ChatPDF
+          {t.common.appName}
         </Link>
 
         <span className="h-4 w-px shrink-0 bg-rule" aria-hidden="true" />
@@ -216,8 +218,10 @@ export default function DocumentWorkspace({
 
         <DocumentStatusBadge status={status} />
 
+        <LocaleSwitcher />
+
         <div className="flex shrink-0 border border-rule lg:hidden">
-          {(["documento", "chat"] as const).map((pane) => (
+          {(["document", "chat"] as const).map((pane) => (
             <button
               key={pane}
               type="button"
@@ -229,7 +233,7 @@ export default function DocumentWorkspace({
                   : "text-ink-muted hover:text-ink"
               }`}
             >
-              {pane}
+              {pane === "document" ? t.document.paneDocument : t.document.paneChat}
             </button>
           ))}
         </div>
@@ -243,11 +247,14 @@ export default function DocumentWorkspace({
                 className="h-2.5 w-2.5 shrink-0 animate-spin rounded-full border border-current border-t-transparent"
                 aria-hidden="true"
               />
-              Indicizzazione in corso
+              {t.document.indexing}
             </span>
             {totalChunks ? (
               <span className="font-mono text-xs text-ink-muted">
-                {processedChunks}/{totalChunks} blocchi
+                {format(t.document.chunkProgress, {
+                  processed: processedChunks,
+                  total: totalChunks,
+                })}
                 {progressPercent !== null ? ` · ${progressPercent}%` : ""}
               </span>
             ) : null}
@@ -270,7 +277,7 @@ export default function DocumentWorkspace({
       {status === "error" && (
         <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-alert bg-alert-soft px-4 py-3 sm:px-6">
           <p className="min-w-0 flex-1 text-sm leading-6 text-alert">
-            {errorMessage ?? GENERIC_PROCESSING_ERROR}
+            {errorMessage ?? t.document.processingFailed}
           </p>
 
           {fileUrl && (
@@ -279,7 +286,7 @@ export default function DocumentWorkspace({
               onClick={handleRetry}
               className="shrink-0 border border-alert px-3 py-1.5 text-sm font-medium text-alert transition-colors hover:bg-alert hover:text-paper"
             >
-              Riprova
+              {t.document.retry}
             </button>
           )}
         </div>
@@ -287,9 +294,9 @@ export default function DocumentWorkspace({
 
       <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1.6fr)_minmax(380px,1fr)]">
         <section
-          aria-label="Documento"
+          aria-label={t.document.paneDocument}
           className={`min-h-0 flex-1 ${
-            activePane === "documento" ? "flex" : "hidden"
+            activePane === "document" ? "flex" : "hidden"
           } flex-col lg:flex`}
         >
           {fileUrl ? (
@@ -301,15 +308,14 @@ export default function DocumentWorkspace({
           ) : (
             <div className="grid h-full place-items-center bg-sunken px-6">
               <p className="max-w-xs text-center text-sm text-ink-soft">
-                Il file non e&apos; piu&apos; raggiungibile su Storage. Carica di nuovo il
-                PDF per rivederlo.
+                {t.document.missingFileViewer}
               </p>
             </div>
           )}
         </section>
 
         <section
-          aria-label="Chat"
+          aria-label={t.document.paneChat}
           className={`min-h-0 flex-1 border-rule ${
             activePane === "chat" ? "flex" : "hidden"
           } flex-col lg:flex lg:border-l`}

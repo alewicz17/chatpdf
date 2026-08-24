@@ -3,18 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { useTranslations } from "@/lib/i18n/context";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "signin" | "signup";
 
-const MODE_LABEL: Record<Mode, string> = {
-  signin: "Accedi",
-  signup: "Crea account",
-};
-
 /** Login e registrazione con email e password (Supabase Auth). */
 export default function LoginForm({ next }: { next: string }) {
   const router = useRouter();
+  const { t } = useTranslations();
+  const modeLabel: Record<Mode, string> = {
+    signin: t.login.signIn,
+    signup: t.login.signUp,
+  };
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,7 +44,7 @@ export default function LoginForm({ next }: { next: string }) {
         // l'utente deve prima cliccare il link ricevuto.
         if (!data.session) {
           setNotice(
-            "Ti abbiamo inviato un'email di conferma: aprila per attivare l'account.",
+            t.login.confirmEmail,
           );
           setIsSubmitting(false);
           return;
@@ -64,7 +65,7 @@ export default function LoginForm({ next }: { next: string }) {
       setError(
         authError instanceof Error
           ? authError.message
-          : "Autenticazione non riuscita. Riprova.",
+          : t.login.failed,
       );
       setIsSubmitting(false);
     }
@@ -89,14 +90,14 @@ export default function LoginForm({ next }: { next: string }) {
                 : "text-ink-muted hover:text-ink"
             }`}
           >
-            {MODE_LABEL[value]}
+            {modeLabel[value]}
           </button>
         ))}
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className="eyebrow">Email</span>
+          <span className="eyebrow">{t.login.email}</span>
           <input
             type="email"
             value={email}
@@ -108,7 +109,7 @@ export default function LoginForm({ next }: { next: string }) {
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="eyebrow">Password</span>
+          <span className="eyebrow">{t.login.password}</span>
           <input
             type="password"
             value={password}
@@ -127,7 +128,7 @@ export default function LoginForm({ next }: { next: string }) {
           disabled={isSubmitting}
           className="mt-2 bg-ink px-4 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSubmitting ? "Attendi..." : MODE_LABEL[mode]}
+          {isSubmitting ? t.login.submitting : modeLabel[mode]}
         </button>
       </form>
 

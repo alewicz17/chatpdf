@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getEmbeddingProvider, getTextGenerator } from "@/lib/ai";
 import { getCurrentUser } from "@/lib/auth/user";
+import { getTranslations } from "@/lib/i18n/server";
 import {
   MATCH_COUNT,
   buildSystemPrompt,
@@ -45,6 +46,7 @@ const chatSchema = z.object({
  * la risposta in streaming, imponendo la citazione della fonte come [Pagina X].
  */
 export async function POST(req: Request) {
+  const { t } = await getTranslations();
   const user = await getCurrentUser();
 
   if (!user) {
@@ -55,7 +57,7 @@ export async function POST(req: Request) {
   const rateLimit = await consumeRateLimit(user.id, RATE_LIMITS.chat);
 
   if (!rateLimit.allowed) {
-    return rateLimitResponse(rateLimit);
+    return rateLimitResponse(rateLimit, t);
   }
 
   const body = await req.json().catch(() => null);
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Payload non valido", issues: z.treeifyError(parsed.error) },
+      { error: t.api.invalidPayload, issues: z.treeifyError(parsed.error) },
       { status: 400 },
     );
   }
@@ -74,7 +76,7 @@ export async function POST(req: Request) {
 
   if (!question) {
     return NextResponse.json(
-      { error: "Nessuna domanda dell'utente nei messaggi" },
+      { error: t.api.noQuestion },
       { status: 400 },
     );
   }
@@ -84,14 +86,14 @@ export async function POST(req: Request) {
 
     if (!document) {
       return NextResponse.json(
-        { error: "Documento non trovato" },
+        { error: t.api.documentNotFound },
         { status: 404 },
       );
     }
 
     if (document.status !== "ready") {
       return NextResponse.json(
-        { error: "Il documento non e' ancora pronto" },
+        { error: t.api.documentNotReady },
         { status: 409 },
       );
     }
@@ -114,7 +116,7 @@ export async function POST(req: Request) {
     console.error("POST /api/chat", error);
 
     return NextResponse.json(
-      { error: "Generazione della risposta fallita" },
+      { error: t.api.generationFailed },
       { status: 500 },
     );
   }

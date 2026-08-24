@@ -1,6 +1,8 @@
+"use client";
+
+import { useTranslations } from "@/lib/i18n/context";
 import type { DocumentStatus } from "@/lib/repositories/documents";
 import {
-  DOCUMENT_STATUS_LABELS,
   DOCUMENT_STATUS_STYLES,
   isDocumentPending,
 } from "@/lib/document-status";
@@ -13,6 +15,8 @@ type DocumentStatusBadgeProps = {
 export default function DocumentStatusBadge({
   status,
 }: DocumentStatusBadgeProps) {
+  const { t } = useTranslations();
+
   return (
     <span
       className={`inline-flex shrink-0 items-center gap-2 border px-2.5 py-1 font-mono text-[0.6875rem] uppercase tracking-wide ${DOCUMENT_STATUS_STYLES[status]}`}
@@ -25,7 +29,7 @@ export default function DocumentStatusBadge({
           aria-hidden="true"
         />
       )}
-      {DOCUMENT_STATUS_LABELS[status]}
+      {t.status[status]}
     </span>
   );
 }

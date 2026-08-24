@@ -13,17 +13,13 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 
 import ApiKeyField from "@/components/api-key-field";
 import MarkdownMessage from "@/components/markdown-message";
+import { useTranslations } from "@/lib/i18n/context";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 const MAX_TEXTAREA_HEIGHT = 168;
 
 /** La chiave personale vale per tutti i documenti, non solo per quello aperto. */
 const API_KEY_STORAGE_KEY = "chatpdf:generation-api-key";
-
-const SUGGESTIONS = [
-  "Riassumi il documento in cinque punti",
-  "Qual e' la conclusione?",
-  "Elenca date e scadenze citate",
-];
 
 type ChatPanelProps = {
   documentId: string;
@@ -111,17 +107,15 @@ function writeApiKey(apiKey: string | null): void {
   apiKeyListeners.forEach((listener) => listener());
 }
 
-const GENERIC_CHAT_ERROR = "La risposta si e' interrotta prima di arrivare.";
-
 /**
  * Messaggio da mostrare per un errore della chat.
  * Quando la route risponde con uno stato di errore (429, 409, 401...) il corpo
  * JSON arriva qui come testo grezzo: si estrae il campo `error` invece di
  * stampare l'oggetto serializzato.
  */
-function readErrorMessage(error: Error): string {
+function readErrorMessage(error: Error, t: Dictionary): string {
   const raw = error.message.trim();
-  if (!raw) return GENERIC_CHAT_ERROR;
+  if (!raw) return t.chat.failed;
 
   if (raw.startsWith("{")) {
     try {
@@ -143,6 +137,7 @@ export default function ChatPanel({
   isDocumentReady,
   onCitationClick,
 }: ChatPanelProps) {
+  const { t } = useTranslations();
   const [input, setInput] = useState("");
   const [isApiKeyPanelOpen, setIsApiKeyPanelOpen] = useState(false);
   const apiKey = useSyncExternalStore(
@@ -241,7 +236,7 @@ export default function ChatPanel({
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface">
       <header className="flex shrink-0 items-center justify-between border-b border-rule px-5 py-3">
-        <span className="eyebrow">Conversazione</span>
+        <span className="eyebrow">{t.chat.heading}</span>
 
         <div className="flex items-center gap-4">
           {messages.length > 0 && !isBusy && (
@@ -250,7 +245,7 @@ export default function ChatPanel({
               onClick={clearConversation}
               className="font-mono text-[0.6875rem] uppercase tracking-wide text-ink-muted transition-colors hover:text-ink"
             >
-              Svuota
+              {t.chat.clear}
             </button>
           )}
 
@@ -263,7 +258,8 @@ export default function ChatPanel({
               apiKey ? "text-ink" : "text-ink-muted"
             }`}
           >
-            Chiave API{apiKey ? " •" : ""}
+            {t.chat.apiKey}
+            {apiKey ? " •" : ""}
           </button>
         </div>
       </header>
@@ -279,13 +275,13 @@ export default function ChatPanel({
           <div className="space-y-4">
             <p className="font-serif text-[0.9375rem] leading-7 text-ink-soft">
               {isDocumentReady
-                ? "Fai una domanda sul documento. Ogni risposta cita la pagina da cui viene: cliccala per aprirla."
-                : "La chat si apre appena il documento e' stato indicizzato."}
+                ? t.chat.emptyReady
+                : t.chat.emptyWaiting}
             </p>
 
             {isDocumentReady && (
               <div className="flex flex-col items-start gap-2">
-                {SUGGESTIONS.map((suggestion) => (
+                {t.chat.suggestions.map((suggestion) => (
                   <button
                     key={suggestion}
                     type="button"
@@ -322,7 +318,7 @@ export default function ChatPanel({
             className="flex items-center gap-1.5 border-l-2 border-marker pl-4"
             aria-live="polite"
           >
-            <span className="sr-only">Ricerca nel documento in corso</span>
+            <span className="sr-only">{t.chat.searching}</span>
             {[0, 1, 2].map((index) => (
               <span
                 key={index}
@@ -337,7 +333,7 @@ export default function ChatPanel({
         {error && (
           <div className="border border-alert bg-alert-soft px-4 py-3">
             <p className="text-sm text-alert">
-              {readErrorMessage(error)}
+              {readErrorMessage(error, t)}
             </p>
             <button
               type="button"
@@ -347,7 +343,7 @@ export default function ChatPanel({
               }}
               className="mt-2 font-mono text-[0.6875rem] uppercase tracking-wide text-alert underline underline-offset-2"
             >
-              Riprova
+              {t.chat.retry}
             </button>
           </div>
         )}
@@ -372,8 +368,8 @@ export default function ChatPanel({
             disabled={!isDocumentReady}
             placeholder={
               isDocumentReady
-                ? "Fai una domanda sul documento"
-                : "In attesa dell'indicizzazione"
+                ? t.chat.placeholderReady
+                : t.chat.placeholderWaiting
             }
             className="max-h-42 min-h-6 flex-1 resize-none bg-transparent text-sm leading-6 text-ink outline-none placeholder:text-ink-muted disabled:cursor-not-allowed"
           />
@@ -384,7 +380,7 @@ export default function ChatPanel({
               onClick={() => stop()}
               className="shrink-0 bg-surface px-3 py-1.5 text-sm font-medium text-ink shadow-[0_1px_2px_rgba(21,23,29,0.12)]"
             >
-              Ferma
+              {t.chat.stop}
             </button>
           ) : (
             <button
@@ -392,13 +388,13 @@ export default function ChatPanel({
               disabled={!isDocumentReady || input.trim().length === 0}
               className="shrink-0 bg-ink px-3 py-1.5 text-sm font-medium text-paper transition-colors disabled:bg-rule-strong disabled:text-surface"
             >
-              Invia
+              {t.chat.send}
             </button>
           )}
         </div>
 
         <p className="mt-2 font-mono text-[0.625rem] uppercase tracking-wide text-ink-muted">
-          Invio per inviare, Maiusc+Invio per andare a capo
+          {t.chat.inputHint}
         </p>
       </form>
     </div>

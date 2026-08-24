@@ -1,28 +1,31 @@
 import Link from "next/link";
 
 import DocumentStatusBadge from "@/components/document-status";
+import { LOCALE_TAGS } from "@/lib/i18n/config";
+import { getTranslations } from "@/lib/i18n/server";
 import { listDocuments } from "@/lib/repositories/documents";
-
-const dateFormatter = new Intl.DateTimeFormat("it-IT", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
 /** Documenti dell'utente, dal piu' recente, ognuno linkato alla sua pagina. */
 export default async function DocumentList({ userId }: { userId: string }) {
   const documents = await listDocuments(userId);
+  const { locale, t } = await getTranslations();
+
+  const dateFormatter = new Intl.DateTimeFormat(LOCALE_TAGS[locale], {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 
   if (documents.length === 0) {
     return (
       <p className="w-full max-w-xl text-center text-sm text-ink-muted">
-        Nessun documento caricato per ora.
+        {t.home.documentsEmpty}
       </p>
     );
   }
 
   return (
-    <section className="w-full max-w-xl" aria-label="Documenti caricati">
-      <h2 className="eyebrow mb-3">Documenti caricati</h2>
+    <section className="w-full max-w-xl" aria-label={t.home.documentsHeading}>
+      <h2 className="eyebrow mb-3">{t.home.documentsHeading}</h2>
 
       <ul className="border-t border-rule">
         {documents.map((document) => (

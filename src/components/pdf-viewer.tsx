@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
+import { format } from "@/lib/i18n/config";
+import { useTranslations } from "@/lib/i18n/context";
+
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
@@ -38,6 +41,7 @@ export default function PdfViewer({
   targetPage,
   onTargetReached,
 }: PdfViewerProps) {
+  const { t } = useTranslations();
   const scrollRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const visibilityRef = useRef(new Map<number, number>());
@@ -181,11 +185,11 @@ export default function PdfViewer({
             setHasLoadError(true);
           }}
           loading={
-            <p className="eyebrow py-16 text-center">Apertura del documento</p>
+            <p className="eyebrow py-16 text-center">{t.viewer.opening}</p>
           }
           error={
             <p className="mx-auto max-w-sm border border-rule bg-surface p-6 text-center text-sm text-ink-soft">
-              Il PDF non si apre. Ricarica la pagina o carica di nuovo il file.
+              {t.viewer.loadFailed}
             </p>
           }
           noData={null}
@@ -231,7 +235,7 @@ export default function PdfViewer({
               type="button"
               onClick={() => setZoomIndex((index) => Math.max(0, index - 1))}
               disabled={zoomIndex === 0}
-              aria-label="Riduci lo zoom"
+              aria-label={t.viewer.zoomOut}
               className="grid h-7 w-7 place-items-center rounded-full text-ink-soft transition-colors hover:bg-sunken disabled:text-rule-strong disabled:hover:bg-transparent"
             >
               &minus;
@@ -247,7 +251,7 @@ export default function PdfViewer({
                 )
               }
               disabled={zoomIndex === ZOOM_LEVELS.length - 1}
-              aria-label="Aumenta lo zoom"
+              aria-label={t.viewer.zoomIn}
               className="grid h-7 w-7 place-items-center rounded-full text-ink-soft transition-colors hover:bg-sunken disabled:text-rule-strong disabled:hover:bg-transparent"
             >
               +
@@ -256,7 +260,10 @@ export default function PdfViewer({
             <span className="mx-1 h-4 w-px bg-rule" aria-hidden="true" />
 
             <span className="eyebrow pr-2 tabular-nums" aria-live="polite">
-              Pagina {currentPage} di {pageCount}
+              {format(t.viewer.pageIndicator, {
+                current: currentPage,
+                total: pageCount,
+              })}
             </span>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/user";
+import { getTranslations } from "@/lib/i18n/server";
 import {
   RATE_LIMITS,
   consumeRateLimit,
@@ -23,6 +24,7 @@ const createDocumentSchema = z.object({
  * L'insert passa di qui perche' la RLS concede all'anon la sola lettura.
  */
 export async function POST(req: Request) {
+  const { t } = await getTranslations();
   const user = await getCurrentUser();
 
   if (!user) {
@@ -33,7 +35,7 @@ export async function POST(req: Request) {
   const rateLimit = await consumeRateLimit(user.id, RATE_LIMITS.createDocument);
 
   if (!rateLimit.allowed) {
-    return rateLimitResponse(rateLimit);
+    return rateLimitResponse(rateLimit, t);
   }
 
   const body = await req.json().catch(() => null);
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Payload non valido", issues: z.treeifyError(parsed.error) },
+      { error: t.api.invalidPayload, issues: z.treeifyError(parsed.error) },
       { status: 400 },
     );
   }
@@ -50,7 +52,7 @@ export async function POST(req: Request) {
   // Storage: se non combacia, il documento punterebbe al file di un altro.
   if (!parsed.data.storagePath.startsWith(`${user.id}/`)) {
     return NextResponse.json(
-      { error: "Percorso di Storage non valido" },
+      { error: t.api.invalidStoragePath },
       { status: 400 },
     );
   }
@@ -61,7 +63,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("POST /api/documents", error);
     return NextResponse.json(
-      { error: "Impossibile creare il documento" },
+      { error: t.api.createDocumentFailed },
       { status: 500 },
     );
   }
