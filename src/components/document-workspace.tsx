@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 
+import AppNav from "@/components/app-nav";
 import ChatPanel from "@/components/chat-panel";
-import LocaleSwitcher from "@/components/locale-switcher";
 import DocumentStatusBadge from "@/components/document-status";
 import { isDocumentPending } from "@/lib/document-status";
 import { format } from "@/lib/i18n/config";
@@ -47,6 +46,7 @@ type ProcessSliceResponse = {
 
 type DocumentWorkspaceProps = {
   documentId: string;
+  userEmail: string;
   fileName: string;
   fileUrl: string | null;
   initialStatus: DocumentStatus;
@@ -56,17 +56,31 @@ type DocumentWorkspaceProps = {
 /** Shell della pagina documento: visore a sinistra, chat a destra, stato condiviso. */
 export default function DocumentWorkspace({
   documentId,
+  userEmail,
   fileName,
   fileUrl,
   initialStatus,
   initialErrorMessage,
 }: DocumentWorkspaceProps) {
   const { t } = useTranslations();
+
+  // La pagina e' un Server Component e firma una URL nuova a ogni render: un
+  // `router.refresh()` (cambio lingua) cambierebbe il prop e farebbe ricaricare
+  // il PDF da capo. Si tiene la prima URL ricevuta per questo documento.
+  const [pinnedFileUrl, setPinnedFileUrl] = useState({ documentId, url: fileUrl });
+
+  if (pinnedFileUrl.documentId !== documentId) {
+    setPinnedFileUrl({ documentId, url: fileUrl });
+  }
+
+  const stableFileUrl =
+    pinnedFileUrl.documentId === documentId ? pinnedFileUrl.url : fileUrl;
+
   const [status, setStatus] = useState<DocumentStatus>(() =>
-    initialStatus === "pending" && !fileUrl ? "error" : initialStatus,
+    initialStatus === "pending" && !stableFileUrl ? "error" : initialStatus,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(() =>
-    initialStatus === "pending" && !fileUrl
+    initialStatus === "pending" && !stableFileUrl
       ? t.document.missingFile
       : initialErrorMessage,
   );
@@ -86,7 +100,7 @@ export default function DocumentWorkspace({
    * dai chunk gia' salvati, quindi anche un retry continua da dove si era fermato.
    */
   const drive = useCallback(async () => {
-    if (!fileUrl || isDrivingRef.current) return;
+    if (!stableFileUrl || isDrivingRef.current) return;
 
     isDrivingRef.current = true;
     setStatus("processing");
@@ -154,7 +168,7 @@ export default function DocumentWorkspace({
     } finally {
       isDrivingRef.current = false;
     }
-  }, [documentId, fileUrl, t]);
+  }, [documentId, stableFileUrl, t]);
 
   // Se il documento e' ancora in lavorazione, questa pagina ne pilota
   // l'ingestion. Prima legge il progresso salvato (per non mostrare la barra a
@@ -162,7 +176,7 @@ export default function DocumentWorkspace({
   useEffect(() => {
     cancelledRef.current = false;
 
-    if (fileUrl && isDocumentPending(initialStatus)) {
+    if (stableFileUrl && isDocumentPending(initialStatus)) {
       void fetch(`/api/documents/${documentId}`, { cache: "no-store" })
         .then((response) => (response.ok ? response.json() : null))
         .then((data: DocumentStatusResponse | null) => {
@@ -179,7 +193,7 @@ export default function DocumentWorkspace({
     return () => {
       cancelledRef.current = true;
     };
-  }, [documentId, fileUrl, initialStatus, drive]);
+  }, [documentId, stableFileUrl, initialStatus, drive]);
 
   const handleRetry = useCallback(() => {
     cancelledRef.current = false;
@@ -202,42 +216,36 @@ export default function DocumentWorkspace({
 
   return (
     <div className="flex h-dvh flex-col">
-      <header className="flex shrink-0 items-center gap-3 border-b border-rule bg-surface px-4 py-3 sm:px-6">
-        <Link
-          href="/"
-          className="font-serif text-lg leading-none tracking-tight text-ink"
-        >
-          {t.common.appName}
-        </Link>
-
-        <span className="h-4 w-px shrink-0 bg-rule" aria-hidden="true" />
+      <AppNav
+        email={userEmail}
+        trailing={
+          <div className="flex shrink-0 divide-x divide-rule border border-rule lg:hidden">
+            {(["document", "chat"] as const).map((pane) => (
+              <button
+                key={pane}
+                type="button"
+                onClick={() => setActivePane(pane)}
+                aria-pressed={activePane === pane}
+                className={`px-2.5 py-1.5 font-mono text-[0.6875rem] uppercase tracking-wide transition-colors ${
+                  activePane === pane
+                    ? "bg-ink text-paper"
+                    : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                {pane === "document" ? t.document.paneDocument : t.document.paneChat}
+              </button>
+            ))}
+          </div>
+        }
+      >
+        <span className="h-3.5 w-px shrink-0 bg-rule" aria-hidden="true" />
 
         <p className="min-w-0 flex-1 truncate text-sm text-ink-soft" title={fileName}>
           {fileName}
         </p>
 
         <DocumentStatusBadge status={status} />
-
-        <LocaleSwitcher />
-
-        <div className="flex shrink-0 border border-rule lg:hidden">
-          {(["document", "chat"] as const).map((pane) => (
-            <button
-              key={pane}
-              type="button"
-              onClick={() => setActivePane(pane)}
-              aria-pressed={activePane === pane}
-              className={`px-2.5 py-1 font-mono text-[0.6875rem] uppercase tracking-wide transition-colors ${
-                activePane === pane
-                  ? "bg-ink text-paper"
-                  : "text-ink-muted hover:text-ink"
-              }`}
-            >
-              {pane === "document" ? t.document.paneDocument : t.document.paneChat}
-            </button>
-          ))}
-        </div>
-      </header>
+      </AppNav>
 
       {isDocumentPending(status) && (
         <div className="shrink-0 border-b border-rule bg-surface px-4 py-3 sm:px-6">
@@ -280,7 +288,7 @@ export default function DocumentWorkspace({
             {errorMessage ?? t.document.processingFailed}
           </p>
 
-          {fileUrl && (
+          {stableFileUrl && (
             <button
               type="button"
               onClick={handleRetry}
@@ -299,9 +307,9 @@ export default function DocumentWorkspace({
             activePane === "document" ? "flex" : "hidden"
           } flex-col lg:flex`}
         >
-          {fileUrl ? (
+          {stableFileUrl ? (
             <PdfViewer
-              fileUrl={fileUrl}
+              fileUrl={stableFileUrl}
               targetPage={targetPage}
               onTargetReached={handleTargetReached}
             />

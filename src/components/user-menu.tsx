@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import NavPopover from "@/components/nav-popover";
 import { useTranslations } from "@/lib/i18n/context";
 import { createClient } from "@/lib/supabase/client";
 
@@ -22,19 +23,38 @@ export default function UserMenu({ email }: { email: string }) {
     router.refresh();
   }
 
+  const monogram = email.trim().charAt(0).toUpperCase() || "?";
+
   return (
-    <div className="flex items-center gap-3">
-      <span className="max-w-[12rem] truncate font-mono text-[0.6875rem] text-ink-muted">
-        {email}
-      </span>
-      <button
-        type="button"
-        onClick={handleSignOut}
-        disabled={isSigningOut}
-        className="shrink-0 border border-rule px-2.5 py-1 font-mono text-[0.6875rem] uppercase tracking-wide text-ink-muted transition-colors hover:text-ink disabled:opacity-50"
-      >
-        {t.nav.signOut}
-      </button>
-    </div>
+    <NavPopover
+      label={t.nav.account}
+      panelClassName="w-[min(16rem,calc(100vw-2rem))] p-4"
+      trigger={
+        <span
+          className="grid h-4 w-4 shrink-0 place-items-center bg-ink text-[0.5625rem] leading-none text-paper"
+          aria-hidden="true"
+        >
+          {monogram}
+        </span>
+      }
+    >
+      {() => (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <p className="eyebrow">{t.nav.account}</p>
+            <p className="break-all font-mono text-xs text-ink">{email}</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+            className="w-full border border-rule px-3 py-1.5 text-sm text-ink-soft transition-colors hover:border-ink hover:text-ink disabled:opacity-50"
+          >
+            {t.nav.signOut}
+          </button>
+        </div>
+      )}
+    </NavPopover>
   );
 }

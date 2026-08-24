@@ -1,25 +1,15 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 
-import ApiKeyField from "@/components/api-key-field";
 import MarkdownMessage from "@/components/markdown-message";
+import { useApiKey } from "@/lib/api-key";
 import { useTranslations } from "@/lib/i18n/context";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 const MAX_TEXTAREA_HEIGHT = 168;
-
-/** La chiave personale vale per tutti i documenti, non solo per quello aperto. */
-const API_KEY_STORAGE_KEY = "chatpdf:generation-api-key";
 
 type ChatPanelProps = {
   documentId: string;
@@ -63,51 +53,6 @@ function readStoredMessages(documentId: string): UIMessage[] {
 }
 
 /**
- * La chiave personale vive in localStorage: e' uno store esterno a React, letto con
- * `useSyncExternalStore` cosi' resta allineata anche tra piu' schede aperte.
- */
-const apiKeyListeners = new Set<() => void>();
-
-function subscribeToApiKey(onStoreChange: () => void): () => void {
-  apiKeyListeners.add(onStoreChange);
-  window.addEventListener("storage", onStoreChange);
-
-  return () => {
-    apiKeyListeners.delete(onStoreChange);
-    window.removeEventListener("storage", onStoreChange);
-  };
-}
-
-function getApiKeySnapshot(): string | null {
-  try {
-    return window.localStorage.getItem(API_KEY_STORAGE_KEY);
-  } catch (error) {
-    console.error("Lettura della chiave API salvata fallita:", error);
-    return null;
-  }
-}
-
-/** Sul server non esiste localStorage: si parte sempre dalla chiave di default. */
-function getApiKeyServerSnapshot(): string | null {
-  return null;
-}
-
-function writeApiKey(apiKey: string | null): void {
-  try {
-    if (apiKey) {
-      window.localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
-    } else {
-      window.localStorage.removeItem(API_KEY_STORAGE_KEY);
-    }
-  } catch (error) {
-    console.error("Salvataggio della chiave API fallito:", error);
-  }
-
-  // L'evento `storage` non arriva alla scheda che scrive: si notifica a mano.
-  apiKeyListeners.forEach((listener) => listener());
-}
-
-/**
  * Messaggio da mostrare per un errore della chat.
  * Quando la route risponde con uno stato di errore (429, 409, 401...) il corpo
  * JSON arriva qui come testo grezzo: si estrae il campo `error` invece di
@@ -139,12 +84,7 @@ export default function ChatPanel({
 }: ChatPanelProps) {
   const { t } = useTranslations();
   const [input, setInput] = useState("");
-  const [isApiKeyPanelOpen, setIsApiKeyPanelOpen] = useState(false);
-  const apiKey = useSyncExternalStore(
-    subscribeToApiKey,
-    getApiKeySnapshot,
-    getApiKeyServerSnapshot,
-  );
+  const apiKey = useApiKey();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const hasRestoredRef = useRef(false);
@@ -238,37 +178,16 @@ export default function ChatPanel({
       <header className="flex shrink-0 items-center justify-between border-b border-rule px-5 py-3">
         <span className="eyebrow">{t.chat.heading}</span>
 
-        <div className="flex items-center gap-4">
-          {messages.length > 0 && !isBusy && (
-            <button
-              type="button"
-              onClick={clearConversation}
-              className="font-mono text-[0.6875rem] uppercase tracking-wide text-ink-muted transition-colors hover:text-ink"
-            >
-              {t.chat.clear}
-            </button>
-          )}
-
+        {messages.length > 0 && !isBusy && (
           <button
             type="button"
-            onClick={() => setIsApiKeyPanelOpen((open) => !open)}
-            aria-expanded={isApiKeyPanelOpen}
-            aria-controls="api-key-panel"
-            className={`font-mono text-[0.6875rem] uppercase tracking-wide transition-colors hover:text-ink ${
-              apiKey ? "text-ink" : "text-ink-muted"
-            }`}
+            onClick={clearConversation}
+            className="font-mono text-[0.6875rem] uppercase tracking-wide text-ink-muted transition-colors hover:text-ink"
           >
-            {t.chat.apiKey}
-            {apiKey ? " •" : ""}
+            {t.chat.clear}
           </button>
-        </div>
+        )}
       </header>
-
-      {isApiKeyPanelOpen && (
-        <div id="api-key-panel">
-          <ApiKeyField apiKey={apiKey} onChange={writeApiKey} />
-        </div>
-      )}
 
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-6">
         {messages.length === 0 && (

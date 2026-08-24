@@ -3,11 +3,8 @@
 import { useId, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import {
-  LOCALES,
-  persistLocale,
-  type Locale,
-} from "@/lib/i18n/config";
+import NavPopover from "@/components/nav-popover";
+import { LOCALES, persistLocale, type Locale } from "@/lib/i18n/config";
 import { useTranslations } from "@/lib/i18n/context";
 
 const LOCALE_NAMES: Record<Locale, string> = {
@@ -18,7 +15,7 @@ const LOCALE_NAMES: Record<Locale, string> = {
 /** Bandiera del Regno Unito; `clipId` evita collisioni tra piu' istanze. */
 function EnglishFlag({ clipId }: { clipId: string }) {
   return (
-    <svg viewBox="0 0 60 30" className="h-3.5 w-5" aria-hidden="true">
+    <svg viewBox="0 0 60 30" className="h-3.5 w-5 shrink-0" aria-hidden="true">
       <clipPath id={clipId}>
         <path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z" />
       </clipPath>
@@ -38,12 +35,16 @@ function EnglishFlag({ clipId }: { clipId: string }) {
 
 function ItalianFlag() {
   return (
-    <svg viewBox="0 0 60 30" className="h-3.5 w-5" aria-hidden="true">
+    <svg viewBox="0 0 60 30" className="h-3.5 w-5 shrink-0" aria-hidden="true">
       <rect width="20" height="30" fill="#008c45" />
       <rect x="20" width="20" height="30" fill="#f4f5f0" />
       <rect x="40" width="20" height="30" fill="#cd212a" />
     </svg>
   );
+}
+
+function Flag({ locale, clipId }: { locale: Locale; clipId: string }) {
+  return locale === "en" ? <EnglishFlag clipId={clipId} /> : <ItalianFlag />;
 }
 
 /** Selettore della lingua: scrive il cookie e ricarica i Server Component. */
@@ -53,7 +54,9 @@ export default function LocaleSwitcher() {
   const clipId = useId();
   const [isPending, startTransition] = useTransition();
 
-  function selectLocale(next: Locale) {
+  function selectLocale(next: Locale, close: () => void) {
+    close();
+
     if (next === locale) return;
 
     persistLocale(next);
@@ -63,27 +66,45 @@ export default function LocaleSwitcher() {
   }
 
   return (
-    <div
-      className="flex shrink-0 border border-rule"
-      role="group"
-      aria-label={t.nav.language}
+    <NavPopover
+      label={t.nav.language}
+      triggerClassName={isPending ? "opacity-50" : ""}
+      panelClassName="w-44 p-1"
+      trigger={
+        <>
+          <Flag locale={locale} clipId={`${clipId}-trigger`} />
+          <span>{locale}</span>
+        </>
+      }
     >
-      {LOCALES.map((value) => (
-        <button
-          key={value}
-          type="button"
-          onClick={() => selectLocale(value)}
-          disabled={isPending}
-          aria-pressed={locale === value}
-          title={LOCALE_NAMES[value]}
-          className={`px-2 py-1.5 transition-opacity disabled:opacity-50 ${
-            locale === value ? "bg-sunken opacity-100" : "opacity-40 hover:opacity-80"
-          }`}
-        >
-          {value === "en" ? <EnglishFlag clipId={clipId} /> : <ItalianFlag />}
-          <span className="sr-only">{LOCALE_NAMES[value]}</span>
-        </button>
-      ))}
-    </div>
+      {(close) => (
+        <>
+          <p className="px-2.5 pb-1.5 pt-2 font-mono text-[0.625rem] uppercase tracking-[0.14em] text-ink-muted">
+            {t.nav.language}
+          </p>
+
+          {LOCALES.map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => selectLocale(value, close)}
+              aria-current={locale === value}
+              className={`flex w-full items-center gap-2.5 px-2.5 py-2 text-left text-sm transition-colors hover:bg-sunken ${
+                locale === value ? "text-ink" : "text-ink-soft"
+              }`}
+            >
+              <Flag locale={value} clipId={`${clipId}-${value}`} />
+              <span className="flex-1">{LOCALE_NAMES[value]}</span>
+              {locale === value && (
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-marker ring-1 ring-rule-strong"
+                  aria-hidden="true"
+                />
+              )}
+            </button>
+          ))}
+        </>
+      )}
+    </NavPopover>
   );
 }

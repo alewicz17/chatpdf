@@ -64,6 +64,19 @@ body {
   color: var(--ink-muted);
 }
 
+/* Tratto di evidenziatore sotto il wordmark della testata. */
+.masthead-mark {
+  background-image: linear-gradient(var(--marker), var(--marker));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 0.25em;
+  transition: background-size 180ms ease-out;
+}
+
+.masthead-mark:hover {
+  background-size: 100% 0.55em;
+}
+
 /* Anello temporaneo sulla pagina raggiunta da una citazione. */
 .page-flash {
   box-shadow: 0 0 0 3px var(--marker);
@@ -84,7 +97,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-flash {
+  .page-flash,
+  .masthead-mark {
     transition: none;
   }
 

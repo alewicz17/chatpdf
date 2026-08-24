@@ -28,6 +28,7 @@ export default async function DocumentPage({ params }: PageProps) {
     <main className="flex-1">
       <DocumentWorkspace
         documentId={document.id}
+        userEmail={user.email ?? ""}
         fileName={document.file_name}
         fileUrl={fileUrl}
         initialStatus={document.status}

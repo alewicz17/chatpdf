@@ -12,6 +12,10 @@ const en = {
   },
   nav: {
     language: "Language",
+    apiKey: "Key",
+    apiKeyOwn: "Your key",
+    apiKeyDefault: "Default key",
+    account: "Account",
     signOut: "Sign out",
   },
   home: {
@@ -67,7 +71,6 @@ const en = {
   chat: {
     heading: "Conversation",
     clear: "Clear",
-    apiKey: "API key",
     emptyReady:
       "Ask a question about the document. Every answer cites the page it comes from: click it to open that page.",
     emptyWaiting: "The chat opens as soon as the document has been indexed.",
@@ -88,12 +91,11 @@ const en = {
   },
   apiKey: {
     label: "Personal API key",
-    active: "Active",
     placeholderNew: "Paste your key",
     placeholderReplace: "Replace the saved key",
     save: "Save",
     remove: "Remove",
-    help: "Used to generate answers instead of the default key. It stays in this browser only and is sent to the server with every question. Document search always uses the server key.",
+    help: "Used to generate answers instead of the default key.",
   },
   viewer: {
     opening: "Opening the document",
@@ -137,6 +139,10 @@ const it: Dictionary = {
   },
   nav: {
     language: "Lingua",
+    apiKey: "Chiave",
+    apiKeyOwn: "La tua chiave",
+    apiKeyDefault: "Chiave di default",
+    account: "Account",
     signOut: "Esci",
   },
   home: {
@@ -192,7 +198,6 @@ const it: Dictionary = {
   chat: {
     heading: "Conversazione",
     clear: "Svuota",
-    apiKey: "Chiave API",
     emptyReady:
       "Fai una domanda sul documento. Ogni risposta cita la pagina da cui viene: cliccala per aprirla.",
     emptyWaiting: "La chat si apre appena il documento e' stato indicizzato.",
@@ -213,7 +218,6 @@ const it: Dictionary = {
   },
   apiKey: {
     label: "Chiave API personale",
-    active: "Attiva",
     placeholderNew: "Incolla la tua chiave",
     placeholderReplace: "Sostituisci la chiave salvata",
     save: "Salva",

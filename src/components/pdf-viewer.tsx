@@ -45,6 +45,7 @@ export default function PdfViewer({
   const scrollRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const visibilityRef = useRef(new Map<number, number>());
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   const [pageCount, setPageCount] = useState(0);
   const [aspectRatio, setAspectRatio] = useState(FALLBACK_ASPECT_RATIO);
@@ -88,9 +89,11 @@ export default function PdfViewer({
   }, []);
 
   // Pagina corrente: quella che occupa piu' spazio nella finestra di scroll.
+  // L'observer vive quanto il visore e segue i nodi tramite `registerPage`: se
+  // react-pdf ricarica il documento, le pagine rimontate vengono riosservate.
   useEffect(() => {
     const container = scrollRef.current;
-    if (!container || pageCount === 0) return;
+    if (!container) return;
 
     const visibility = visibilityRef.current;
 
@@ -118,12 +121,17 @@ export default function PdfViewer({
       { root: container, threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] },
     );
 
+    observerRef.current = observer;
+
     for (const element of pageRefs.current.values()) {
       observer.observe(element);
     }
 
-    return () => observer.disconnect();
-  }, [pageCount]);
+    return () => {
+      observer.disconnect();
+      observerRef.current = null;
+    };
+  }, []);
 
   // Salto alla pagina citata, con un anello giallo che la segnala all'arrivo.
   useEffect(() => {
@@ -153,17 +161,24 @@ export default function PdfViewer({
     return () => window.clearTimeout(timeout);
   }, [targetPage, pageCount, onTargetReached]);
 
-  const registerPage = useCallback(
-    (page: number) => (element: HTMLDivElement | null) => {
-      if (element) {
-        pageRefs.current.set(page, element);
-      } else {
-        pageRefs.current.delete(page);
-        visibilityRef.current.delete(page);
-      }
-    },
-    [],
-  );
+  // Callback unica e stabile per tutte le pagine: il numero si legge dal
+  // `data-page-number` del nodo. Ogni pagina montata viene osservata subito,
+  // cosi' anche un rimontaggio del documento tiene aggiornata la pagina corrente.
+  const registerPage = useCallback((element: HTMLDivElement | null) => {
+    if (!element) return;
+
+    const page = Number(element.dataset.pageNumber ?? "0");
+    if (page <= 0) return;
+
+    pageRefs.current.set(page, element);
+    observerRef.current?.observe(element);
+
+    return () => {
+      observerRef.current?.unobserve(element);
+      pageRefs.current.delete(page);
+      visibilityRef.current.delete(page);
+    };
+  }, []);
 
   const pages = useMemo(
     () => Array.from({ length: pageCount }, (_, index) => index + 1),
@@ -203,7 +218,7 @@ export default function PdfViewer({
               return (
                 <div
                   key={page}
-                  ref={registerPage(page)}
+                  ref={registerPage}
                   data-page-number={page}
                   className="scroll-mt-6 bg-surface shadow-[0_1px_3px_rgba(21,23,29,0.16)]"
                   style={{

@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 
+import AppNav from "@/components/app-nav";
 import DocumentList from "@/components/document-list";
-import LocaleSwitcher from "@/components/locale-switcher";
 import PdfDropzone from "@/components/pdf-dropzone";
-import UserMenu from "@/components/user-menu";
 import { getCurrentUser } from "@/lib/auth/user";
 import { getTranslations } from "@/lib/i18n/server";
 
@@ -21,10 +20,7 @@ export default async function Home() {
 
   return (
     <>
-      <header className="flex shrink-0 items-center justify-end gap-3 border-b border-rule bg-surface px-4 py-3 sm:px-6">
-        <LocaleSwitcher />
-        <UserMenu email={user.email ?? ""} />
-      </header>
+      <AppNav email={user.email ?? ""} />
 
       <main className="flex flex-1 flex-col items-center justify-center gap-10 px-6 py-16">
         <div className="max-w-md text-center">
