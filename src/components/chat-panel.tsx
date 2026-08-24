@@ -111,6 +111,32 @@ function writeApiKey(apiKey: string | null): void {
   apiKeyListeners.forEach((listener) => listener());
 }
 
+const GENERIC_CHAT_ERROR = "La risposta si e' interrotta prima di arrivare.";
+
+/**
+ * Messaggio da mostrare per un errore della chat.
+ * Quando la route risponde con uno stato di errore (429, 409, 401...) il corpo
+ * JSON arriva qui come testo grezzo: si estrae il campo `error` invece di
+ * stampare l'oggetto serializzato.
+ */
+function readErrorMessage(error: Error): string {
+  const raw = error.message.trim();
+  if (!raw) return GENERIC_CHAT_ERROR;
+
+  if (raw.startsWith("{")) {
+    try {
+      const payload = JSON.parse(raw) as { error?: unknown };
+      if (typeof payload.error === "string" && payload.error.trim()) {
+        return payload.error;
+      }
+    } catch {
+      // Non era JSON: vale il messaggio cosi' com'e'.
+    }
+  }
+
+  return raw;
+}
+
 /** Chat sul documento: domande dell'utente, risposte in streaming con citazioni. */
 export default function ChatPanel({
   documentId,
@@ -311,7 +337,7 @@ export default function ChatPanel({
         {error && (
           <div className="border border-alert bg-alert-soft px-4 py-3">
             <p className="text-sm text-alert">
-              {error.message.trim() || "La risposta si e' interrotta prima di arrivare."}
+              {readErrorMessage(error)}
             </p>
             <button
               type="button"

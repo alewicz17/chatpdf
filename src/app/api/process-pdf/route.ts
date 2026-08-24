@@ -9,6 +9,11 @@ import { embedChunks } from "@/lib/pdf/embed-chunks";
 import { fetchPdf } from "@/lib/pdf/fetch-pdf";
 import { loadPages, PdfWithoutTextError } from "@/lib/pdf/load-pages";
 import {
+  RATE_LIMITS,
+  consumeRateLimit,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
+import {
   countChunksByDocument,
   deleteChunksByDocument,
   insertChunks,
@@ -56,6 +61,16 @@ export async function POST(req: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+  }
+
+  // Ogni invocazione riscarica e riparsa il PDF anche quando non c'e' nulla da
+  // vettorializzare: senza un tetto, richiamarla in ciclo e' banda e CPU gratis.
+  // Il 429 esce prima del try, quindi il documento resta "processing" e
+  // l'ingestion riprende da dove si era fermata.
+  const rateLimit = await consumeRateLimit(user.id, RATE_LIMITS.processPdf);
+
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(rateLimit);
   }
 
   const body = await req.json().catch(() => null);

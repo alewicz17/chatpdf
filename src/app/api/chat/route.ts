@@ -9,6 +9,11 @@ import {
   lastUserQuestion,
   toChatMessages,
 } from "@/lib/chat/prompt";
+import {
+  RATE_LIMITS,
+  consumeRateLimit,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 import { matchDocumentChunks } from "@/lib/repositories/chunks";
 import { getDocumentById } from "@/lib/repositories/documents";
 
@@ -44,6 +49,13 @@ export async function POST(req: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+  }
+
+  // Prima di tutto il resto: embedding e generazione si pagano a chiamata.
+  const rateLimit = await consumeRateLimit(user.id, RATE_LIMITS.chat);
+
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(rateLimit);
   }
 
   const body = await req.json().catch(() => null);

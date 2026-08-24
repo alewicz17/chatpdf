@@ -25,6 +25,9 @@ const PdfViewer = dynamic(() => import("@/components/pdf-viewer"), {
 const MISSING_FILE_ERROR =
   "Il file non e' piu' raggiungibile su Storage: carica di nuovo il PDF.";
 
+/** Quota di ingestion esaurita (429): condizione temporanea, non un fallimento. */
+class RateLimitedError extends Error {}
+
 type Pane = "documento" | "chat";
 
 /** Progresso dell'ingestion letto dallo stato del documento. */
@@ -101,7 +104,11 @@ export default function DocumentWorkspace({
           const payload = (await response.json().catch(() => null)) as {
             error?: string;
           } | null;
-          throw new Error(payload?.error ?? GENERIC_PROCESSING_ERROR);
+          const message = payload?.error ?? GENERIC_PROCESSING_ERROR;
+
+          throw response.status === 429
+            ? new RateLimitedError(message)
+            : new Error(message);
         }
 
         const data = (await response.json()) as ProcessSliceResponse;
@@ -127,6 +134,11 @@ export default function DocumentWorkspace({
 
       setStatus("error");
       setErrorMessage(message);
+
+      // Il rate limit e' temporaneo: il documento non e' fallito, va solo
+      // ripreso piu' tardi. Marcarlo "error" sul server lo direbbe a chiunque
+      // riapra la pagina, quando invece l'ingestion e' ancora ripartibile.
+      if (error instanceof RateLimitedError) return;
 
       // La route segna gia' l'errore quando fallisce al suo interno; qui si
       // copre il caso in cui la richiesta non e' mai arrivata al server.
