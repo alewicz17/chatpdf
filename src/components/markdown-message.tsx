@@ -8,6 +8,16 @@ import remarkMath from "remark-math";
 
 import "katex/dist/katex.min.css";
 
+import {
+  CITATION_HREF_PATTERN,
+  CITATION_LABELS,
+  CITATION_PAGE_SEPARATOR,
+  CITATION_PATTERN,
+  citationHref,
+} from "@/lib/chat/citation";
+import { format } from "@/lib/i18n/config";
+import { useTranslations } from "@/lib/i18n/context";
+
 /**
  * I modelli emettono spesso le formule con i delimitatori LaTeX `\(...\)` e `\[...\]`,
  * che remark-math non riconosce: li normalizza in `$...$` e `$$...$$`.
@@ -18,26 +28,28 @@ function normalizeMathDelimiters(segment: string): string {
     .replace(/\\\(([\s\S]*?)\\\)/g, (_, formula: string) => `$${formula}$`);
 }
 
-/** `[Pagina 3, 5]` -> link interni, resi poi come chip che pilotano il visore. */
-const CITATION_PATTERN = /\[\s*Pagina\s+(\d+(?:\s*(?:,|\se\s)\s*\d+)*)\s*\]/gi;
-
-function linkifyCitations(segment: string): string {
+/**
+ * `[Pagina 3, 5]` -> link interni, resi poi come chip che pilotano il visore.
+ * L'etichetta del chip e' quella della lingua attiva, anche su una risposta
+ * generata prima di un cambio di lingua.
+ */
+function linkifyCitations(segment: string, label: string): string {
   return segment.replace(CITATION_PATTERN, (_, pages: string) =>
     pages
-      .split(/\s*(?:,|\se\s)\s*/)
-      .map((page) => `[Pagina ${page}](#pagina-${page})`)
+      .split(CITATION_PAGE_SEPARATOR)
+      .map((page) => `[${label} ${page}](${citationHref(page)})`)
       .join(" "),
   );
 }
 
 /** Applica le trasformazioni al solo testo, lasciando intatti i blocchi di codice. */
-function prepareContent(text: string): string {
+function prepareContent(text: string, label: string): string {
   return text
     .split(/(```[\s\S]*?```|`[^`\n]*`)/g)
     .map((segment, index) =>
       index % 2 === 1
         ? segment
-        : linkifyCitations(normalizeMathDelimiters(segment)),
+        : linkifyCitations(normalizeMathDelimiters(segment), label),
     )
     .join("");
 }
@@ -53,7 +65,12 @@ export default function MarkdownMessage({
   content,
   onCitationClick,
 }: MarkdownMessageProps) {
-  const prepared = useMemo(() => prepareContent(content), [content]);
+  const { locale, t } = useTranslations();
+  const label = CITATION_LABELS[locale];
+  const prepared = useMemo(
+    () => prepareContent(content, label),
+    [content, label],
+  );
 
   const components = useMemo<Components>(
     () => ({
@@ -78,7 +95,7 @@ export default function MarkdownMessage({
       ),
       a: ({ children, href }) => {
         const citation =
-          typeof href === "string" ? /^#pagina-(\d+)$/.exec(href) : null;
+          typeof href === "string" ? CITATION_HREF_PATTERN.exec(href) : null;
 
         if (citation) {
           const page = Number(citation[1]);
@@ -88,7 +105,7 @@ export default function MarkdownMessage({
               type="button"
               onClick={() => onCitationClick?.(page)}
               disabled={!onCitationClick}
-              title={`Vai a pagina ${page}`}
+              title={format(t.chat.goToPage, { page })}
               className="mx-0.5 inline-flex items-baseline border-b-2 border-marker bg-marker-soft px-1 font-mono text-[0.6875rem] uppercase tracking-wide text-ink transition-colors hover:bg-marker disabled:cursor-default disabled:hover:bg-marker-soft"
             >
               {children}
@@ -150,7 +167,7 @@ export default function MarkdownMessage({
         <td className="border border-rule px-2 py-1">{children}</td>
       ),
     }),
-    [onCitationClick],
+    [onCitationClick, t],
   );
 
   return (

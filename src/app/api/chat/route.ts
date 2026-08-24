@@ -46,7 +46,7 @@ const chatSchema = z.object({
  * la risposta in streaming, imponendo la citazione della fonte come [Pagina X].
  */
 export async function POST(req: Request) {
-  const { t } = await getTranslations();
+  const { locale, t } = await getTranslations();
   const user = await getCurrentUser();
 
   if (!user) {
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
     );
 
     return getTextGenerator(apiKey).streamAnswer({
-      system: buildSystemPrompt(chunks),
+      system: buildSystemPrompt(chunks, locale),
       messages,
     });
   } catch (error) {

@@ -84,6 +84,7 @@ const en = {
     stop: "Stop",
     send: "Send",
     inputHint: "Enter to send, Shift+Enter for a new line",
+    goToPage: "Go to page {page}",
   },
   apiKey: {
     label: "Personal API key",
@@ -208,6 +209,7 @@ const it: Dictionary = {
     stop: "Ferma",
     send: "Invia",
     inputHint: "Invio per inviare, Maiusc+Invio per andare a capo",
+    goToPage: "Vai a pagina {page}",
   },
   apiKey: {
     label: "Chiave API personale",
