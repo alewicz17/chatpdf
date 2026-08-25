@@ -33,9 +33,11 @@ export const maxDuration = 60;
 // `done`, cosi' anche un PDF lungo si indicizza senza andare in timeout.
 const CHUNKS_PER_INVOCATION = 128;
 
+// Nessuna chiave dal client: qui si vettorializza, e la chiave personale che la
+// UI conserva e' quella del provider di generazione. Passarla agli embedding
+// vorrebbe dire mandare una chiave Groq a Gemini.
 const processPdfSchema = z.object({
   documentId: z.string().uuid(),
-  apiKey: z.string().min(1).optional(),
 });
 
 /** Traduce l'errore tecnico nel messaggio mostrato all'utente. */
@@ -81,7 +83,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { documentId, apiKey } = parsed.data;
+  const { documentId } = parsed.data;
 
   // Il percorso su Storage viene dal database, non dal client: e' anche il
   // controllo di proprieta' del documento.
@@ -124,7 +126,7 @@ export async function POST(req: Request) {
     );
 
     if (slice.length > 0) {
-      const embedded = await embedChunks(slice, getEmbeddingProvider(apiKey));
+      const embedded = await embedChunks(slice, getEmbeddingProvider());
       await insertChunks(documentId, embedded);
     }
 

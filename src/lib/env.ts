@@ -3,13 +3,21 @@
  * Le variabili NEXT_PUBLIC_* sono leggibili anche dal client.
  */
 
+/**
+ * Valore obbligatorio, ripulito da spazi e virgolette ai bordi: incollando una
+ * chiave nel pannello di un host ci finiscono facilmente un a capo o gli apici,
+ * e il provider risponderebbe con un generico "API key not valid".
+ */
 function required(name: string, value: string | undefined): string {
-  if (!value) {
+  const cleaned = value?.trim().replace(/^["']|["']$/g, "");
+
+  if (!cleaned) {
     throw new Error(
       `Variabile d'ambiente mancante: ${name}. Copiala da .env.example in .env.local.`,
     );
   }
-  return value;
+
+  return cleaned;
 }
 
 export const env = {
