@@ -1,27 +1,22 @@
 import "server-only";
 
 import { createGroq } from "@ai-sdk/groq";
-import { APICallError, streamText } from "ai";
+import { streamText } from "ai";
 
 import { env } from "@/lib/env";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
+import { classifyProviderError, providerErrorMessage } from "./errors";
 import type { StreamAnswerInput, TextGenerator } from "./types";
 
 /**
  * Traduce l'errore del provider in un messaggio mostrabile all'utente.
- * Serve soprattutto in BYOK: senza questo la UI mostrerebbe solo un errore generico.
+ * Serve soprattutto in BYOK e quando la quota del provider e' esaurita: senza
+ * questo la UI mostrerebbe un errore generico e sembrerebbe un guasto dell'app.
  */
-function toUserMessage(error: unknown): string {
-  if (APICallError.isInstance(error)) {
-    if (error.statusCode === 401 || error.statusCode === 403) {
-      return "Chiave API rifiutata dal provider: controllala e riprova.";
-    }
+function toUserMessage(error: unknown, t: Dictionary): string {
+  const kind = classifyProviderError(error);
 
-    if (error.statusCode === 429) {
-      return "Limite di richieste raggiunto sul provider: riprova tra poco.";
-    }
-  }
-
-  return "La risposta si e' interrotta prima di arrivare.";
+  return kind ? providerErrorMessage(kind, t) : t.api.generationFailed;
 }
 
 /**
@@ -35,7 +30,7 @@ export function createGroqTextGenerator(apiKey?: string): TextGenerator {
   return {
     model: env.generationModel,
 
-    streamAnswer({ system, messages }: StreamAnswerInput) {
+    streamAnswer({ system, messages, t }: StreamAnswerInput) {
       const result = streamText({
         model,
         system,
@@ -44,7 +39,9 @@ export function createGroqTextGenerator(apiKey?: string): TextGenerator {
         temperature: 0.2,
       });
 
-      return result.toUIMessageStreamResponse({ onError: toUserMessage });
+      return result.toUIMessageStreamResponse({
+        onError: (error) => toUserMessage(error, t),
+      });
     },
   };
 }

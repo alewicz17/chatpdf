@@ -117,6 +117,12 @@ const en = {
     documentNotFound: "Document not found",
     documentNotReady: "The document is not ready yet",
     generationFailed: "Could not generate the answer",
+    aiQuotaExceeded:
+      "The AI provider quota has run out: this is a limit on the service key, not a bug in the app. Add your own API key from the menu, or try again later.",
+    aiRateLimited:
+      "The AI provider is rate limiting requests right now: wait a few seconds and try again.",
+    aiKeyRejected:
+      "The AI provider rejected the API key: check it and try again.",
     createDocumentFailed: "Could not create the document",
     readDocumentFailed: "Could not read the document",
     updateDocumentFailed: "Could not update the document",
@@ -243,6 +249,12 @@ const it: Dictionary = {
     documentNotFound: "Documento non trovato",
     documentNotReady: "Il documento non e' ancora pronto",
     generationFailed: "Generazione della risposta fallita",
+    aiQuotaExceeded:
+      "La quota del provider AI e' esaurita: e' un limite della chiave del servizio, non un problema dell'app. Aggiungi la tua chiave API dal menu, oppure riprova piu' tardi.",
+    aiRateLimited:
+      "Il provider AI sta limitando le richieste in questo momento: aspetta qualche secondo e riprova.",
+    aiKeyRejected:
+      "Il provider AI ha rifiutato la chiave API: controllala e riprova.",
     createDocumentFailed: "Impossibile creare il documento",
     readDocumentFailed: "Impossibile leggere il documento",
     updateDocumentFailed: "Impossibile aggiornare il documento",

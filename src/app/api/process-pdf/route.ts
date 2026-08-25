@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getEmbeddingProvider } from "@/lib/ai";
+import { classifyProviderError, providerErrorMessage } from "@/lib/ai/errors";
 import { getCurrentUser } from "@/lib/auth/user";
 import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -147,6 +148,19 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("POST /api/process-pdf", error);
+
+    // Quota o limite del provider di embedding: e' una condizione temporanea e
+    // l'ingestion e' ripartibile, quindi il documento non va marcato "error" —
+    // resta "processing" e riprende dai chunk gia' salvati. Il messaggio pero'
+    // deve dire chiaramente che il limite e' del provider AI.
+    const providerError = classifyProviderError(error);
+
+    if (providerError) {
+      return NextResponse.json(
+        { error: providerErrorMessage(providerError, t) },
+        { status: providerError === "auth" ? 401 : 429 },
+      );
+    }
 
     const message = userFacingMessage(error, t);
 

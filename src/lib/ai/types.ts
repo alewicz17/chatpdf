@@ -3,6 +3,8 @@
  * provider ne' nomina un modello: si conoscono solo queste interfacce.
  */
 
+import type { Dictionary } from "@/lib/i18n/dictionaries";
+
 export interface EmbeddingProvider {
   /** Identificativo del modello, utile per log e diagnostica. */
   readonly model: string;
@@ -24,6 +26,8 @@ export type StreamAnswerInput = {
   /** Istruzioni di sistema: contesto recuperato e regole di citazione. */
   system: string;
   messages: ChatMessage[];
+  /** Dizionario della lingua attiva: gli errori dello stream sono gia' testo per l'utente. */
+  t: Dictionary;
 };
 
 export interface TextGenerator {

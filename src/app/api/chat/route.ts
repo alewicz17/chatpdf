@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getEmbeddingProvider, getTextGenerator } from "@/lib/ai";
+import { classifyProviderError, providerErrorMessage } from "@/lib/ai/errors";
 import { getCurrentUser } from "@/lib/auth/user";
 import { getTranslations } from "@/lib/i18n/server";
 import {
@@ -111,9 +112,21 @@ export async function POST(req: Request) {
     return getTextGenerator(apiKey).streamAnswer({
       system: buildSystemPrompt(chunks, locale),
       messages,
+      t,
     });
   } catch (error) {
     console.error("POST /api/chat", error);
+
+    // Quota o limite del provider: va detto esplicitamente, altrimenti sembra
+    // che sia l'app a non funzionare.
+    const providerError = classifyProviderError(error);
+
+    if (providerError) {
+      return NextResponse.json(
+        { error: providerErrorMessage(providerError, t) },
+        { status: providerError === "auth" ? 401 : 429 },
+      );
+    }
 
     return NextResponse.json(
       { error: t.api.generationFailed },
