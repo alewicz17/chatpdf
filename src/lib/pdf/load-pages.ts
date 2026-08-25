@@ -1,6 +1,6 @@
 import "server-only";
 
-import { ensurePdfDomGlobals } from "./dom-polyfills";
+import { preparePdfjsRuntime } from "./pdfjs-runtime";
 
 export type PdfPage = {
   pageNumber: number;
@@ -33,11 +33,11 @@ export class PdfWithoutTextError extends Error {
  * vede, quindi il modulo non finisce nel bundle della lambda e l'estrazione
  * fallisce solo in produzione.
  *
- * L'import e' dinamico perche' `pdfjs-dist` valuta `new DOMMatrix()` a livello
- * di modulo: i global vanno installati prima (vedi `ensurePdfDomGlobals`).
+ * L'import e' dinamico perche' i global di pdfjs vanno installati prima che il
+ * modulo venga valutato (vedi `preparePdfjsRuntime`).
  */
 export async function loadPages(blob: Blob): Promise<LoadedPdf> {
-  ensurePdfDomGlobals();
+  await preparePdfjsRuntime();
 
   const { PDFParse } = await import("pdf-parse");
 

@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { z } from "zod";
 
 import DocumentWorkspace from "@/components/document-workspace";
 import { getCurrentUser } from "@/lib/auth/user";
@@ -15,6 +16,13 @@ export default async function DocumentPage({ params }: PageProps) {
   }
 
   const { id } = await params;
+
+  // L'id finisce in una query su una colonna uuid: un valore malformato farebbe
+  // fallire Postgres e uscire un 500 al posto della pagina "non trovato".
+  if (!z.string().uuid().safeParse(id).success) {
+    notFound();
+  }
+
   const document = await getDocumentById(id, user.id);
 
   if (!document) {

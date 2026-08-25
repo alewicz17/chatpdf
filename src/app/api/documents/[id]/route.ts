@@ -13,6 +13,10 @@ import {
 // Il repository usa il service role: runtime Node, non Edge.
 export const runtime = "nodejs";
 
+// L'id finisce in una query su una colonna uuid: un valore malformato farebbe
+// fallire Postgres e uscire un 500 al posto del 404.
+const documentIdSchema = z.string().uuid();
+
 /**
  * GET /api/documents/[id]
  * Stato di avanzamento dell'ingestion, usato dalla UI in polling.
@@ -29,6 +33,10 @@ export async function GET(
   }
 
   const { id } = await ctx.params;
+
+  if (!documentIdSchema.safeParse(id).success) {
+    return NextResponse.json({ error: t.api.documentNotFound }, { status: 404 });
+  }
 
   try {
     const document = await getDocumentById(id, user.id);
@@ -89,6 +97,10 @@ export async function PATCH(
   }
 
   const { id } = await ctx.params;
+
+  if (!documentIdSchema.safeParse(id).success) {
+    return NextResponse.json({ error: t.api.documentNotFound }, { status: 404 });
+  }
 
   const body = await req.json().catch(() => null);
   const parsed = markErrorSchema.safeParse(body);
