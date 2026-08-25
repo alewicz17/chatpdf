@@ -1,6 +1,6 @@
 import "server-only";
 
-import { PDFParse } from "pdf-parse";
+import { ensurePdfDomGlobals } from "./dom-polyfills";
 
 export type PdfPage = {
   pageNumber: number;
@@ -32,8 +32,15 @@ export class PdfWithoutTextError extends Error {
  * risolve il parser con un import dinamico che il file tracing di Vercel non
  * vede, quindi il modulo non finisce nel bundle della lambda e l'estrazione
  * fallisce solo in produzione.
+ *
+ * L'import e' dinamico perche' `pdfjs-dist` valuta `new DOMMatrix()` a livello
+ * di modulo: i global vanno installati prima (vedi `ensurePdfDomGlobals`).
  */
 export async function loadPages(blob: Blob): Promise<LoadedPdf> {
+  ensurePdfDomGlobals();
+
+  const { PDFParse } = await import("pdf-parse");
+
   const parser = new PDFParse({
     data: new Uint8Array(await blob.arrayBuffer()),
   });
