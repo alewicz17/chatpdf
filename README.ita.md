@@ -8,7 +8,7 @@ clicchi la citazione e il viewer scorre fino a quella pagina evidenziandola.
 Costruito con Next.js 16 (App Router), TypeScript, Supabase e il Vercel AI SDK.
 
 > **Demo live:** **https://chatpdf-jade.vercel.app/**
-> **Account di prova:** `example@exampe.it` · `example`
+> **Account di prova:** `example@example.it` · `example`
 
 ---
 
