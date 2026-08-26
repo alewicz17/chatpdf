@@ -8,7 +8,7 @@ scrolls to that page and highlights it.
 Built with Next.js 16 (App Router), TypeScript, Supabase and the Vercel AI SDK.
 
 > **Live demo:** **https://chatpdf-jade.vercel.app/**
-> **Demo account:** `example@exampe.it` · `example`
+> **Demo account:** `example@example.it` · `example`
 
 ---
 
